@@ -362,6 +362,14 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         let calendar;
         let allEvents = [];
 
@@ -509,11 +517,11 @@
             document.getElementById('modalBody').innerHTML = `
                 <div class="detail-row">
                     <div class="detail-label">👤 ชื่อ:</div>
-                    <div class="detail-value">${props.userName}</div>
+                    <div class="detail-value">${escapeHtml(props.userName)}</div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">📅 วันที่:</div>
-                    <div class="detail-value">${formatDate(event.start)} - ${formatDate(new Date(event.end.getTime() - 86400000))}</div>
+                    <div class="detail-value">${formatDate(event.start)} - ${event.end ? formatDate(new Date(event.end.getTime() - 86400000)) : formatDate(event.start)}</div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">⏰ จำนวนวัน:</div>
@@ -521,11 +529,11 @@
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">📝 เหตุผล:</div>
-                    <div class="detail-value">${props.reason}</div>
+                    <div class="detail-value">${escapeHtml(props.reason)}</div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">👨‍💼 อนุมัติโดย:</div>
-                    <div class="detail-value">${props.approvedBy}</div>
+                    <div class="detail-value">${escapeHtml(props.approvedBy)}</div>
                 </div>
                 ${props.approvedDate ? `
                 <div class="detail-row">

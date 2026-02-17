@@ -1601,7 +1601,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, getDocs, doc, getDoc, updateDoc, setDoc, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDYxyr-KArgycFagZjgJLYGQppSM9Trz2U",
@@ -1863,7 +1863,7 @@
 
             // Lock and fill form
             document.getElementById('reason').value = leaveData.reason;
-            document.getElementById('contactPhone').value = leaveData.contactPhone || '';
+            document.getElementById('contactPhone').value = leaveData.phone || '';
             lockFormFields();
         }
 
@@ -2047,6 +2047,7 @@
                 await addDoc(collection(db, 'leaves'), leaveData);
                 alert('[OK] ส่งใบลาเรียบร้อยแล้ว!');
                 resetLeaveForm();
+                showSection('history');
             } catch (error) {
                 console.error('Error:', error);
                 alert('[!] เกิดข้อผิดพลาด: ' + error.message);
@@ -2464,8 +2465,8 @@
                     if (leave.status === 'รออนุมัติ') {
                         actionButtons = `
                             <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-                                <button class="btn" style="background: #2563eb; font-size: 0.9rem; flex: 1; min-width: 120px;" onclick="openEditLeaveModal('${leave.id}')"><span class="fi fi-edit" style="background-color:#fff"></span> แก้ไข</button>
-                                <button class="btn" style="background: #ef4444; font-size: 0.9rem; flex: 1; min-width: 120px;" onclick="cancelLeave('${leave.id}')"><span class="fi fi-trash" style="background-color:#fff"></span> ยกเลิก</button>
+                                <button class="btn" style="background: #2563eb; color: white; font-size: 0.9rem; flex: 1; min-width: 120px;" onclick="openEditLeaveModal('${leave.id}')"><span class="fi fi-edit" style="background-color:#fff"></span> แก้ไข</button>
+                                <button class="btn" style="background: #ef4444; color: white; font-size: 0.9rem; flex: 1; min-width: 120px;" onclick="cancelLeave('${leave.id}')"><span class="fi fi-trash" style="background-color:#fff"></span> ยกเลิก</button>
                             </div>
                         `;
                     } else if (leave.status === 'อนุมัติแล้ว') {
@@ -2930,7 +2931,7 @@
                 });
 
                 alert('แก้ไขใบลาเรียบร้อยแล้ว');
-                closeEditLeaveModal();
+                window.closeEditLeaveModal();
                 loadLeaveHistory();
                 loadLeaveStats();
             } catch (error) {
@@ -2946,9 +2947,6 @@
             }
 
             try {
-                // Import deleteDoc if not already imported
-                const { deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-                
                 await deleteDoc(doc(db, 'leaves', leaveId));
                 alert('ยกเลิกใบลาเรียบร้อยแล้ว');
                 loadLeaveHistory();
@@ -3123,10 +3121,10 @@
                 </form>
             </div>
             <div class="edit-modal-footer">
-                <button type="button" class="btn" style="background: #6b7280;" onclick="closeEditLeaveModal()">
+                <button type="button" class="btn" style="background: #6b7280; color: white;" onclick="closeEditLeaveModal()">
                     ยกเลิก
                 </button>
-                <button type="button" class="btn" style="background: #2563eb;" onclick="updateLeave()">
+                <button type="button" class="btn" style="background: #2563eb; color: white;" onclick="updateLeave()">
                     💾 บันทึกการแก้ไข
                 </button>
             </div>

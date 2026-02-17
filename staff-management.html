@@ -726,6 +726,14 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Check authentication
         const currentAdminData = sessionStorage.getItem('currentAdmin');
         if (!currentAdminData) {
@@ -917,21 +925,20 @@
                     if (entry.entryType === 'leave') {
                         typeLabel = 'การลา';
                         typeClass = 'leave';
-                        const leaveTypeName = entry.leaveType || 'ไม่ระบุ';
-                        const statusText = entry.status || 'ไม่ระบุสถานะ';
-                        details = `${leaveTypeName} | ${entry.startDate} - ${entry.endDate} | ${entry.days} วัน | ${statusText}`;
+                        const leaveTypeName = escapeHtml(entry.leaveType || 'ไม่ระบุ');
+                        const statusText = escapeHtml(entry.status || 'ไม่ระบุสถานะ');
+                        details = `${leaveTypeName} | ${escapeHtml(entry.startDate)} - ${escapeHtml(entry.endDate)} | ${entry.days} วัน | ${statusText}`;
                     } else if (entry.entryType === 'trip') {
                         typeLabel = 'ไปราชการ';
                         typeClass = 'trip';
-                        const purposeText = entry.purpose || entry.notes || '-';
-                        const statusText = entry.status || 'แจ้งแล้ว';
-                        details = `${entry.subject} | ${entry.location} | ${entry.startDate || entry.date} | ${statusText}`;
+                        const statusText = escapeHtml(entry.status || 'แจ้งแล้ว');
+                        details = `${escapeHtml(entry.subject)} | ${escapeHtml(entry.location)} | ${escapeHtml(entry.startDate || entry.date)} | ${statusText}`;
                     } else {
                         typeLabel = 'เข้าสาย';
                         typeClass = 'late';
-                        const timeText = entry.arrivalTime || entry.time || '-';
-                        const statusText = entry.status || 'แจ้งแล้ว';
-                        details = `${entry.date} | ${timeText} | ${entry.minutes} นาที | ${statusText}`;
+                        const timeText = escapeHtml(entry.arrivalTime || entry.time || '-');
+                        const statusText = escapeHtml(entry.status || 'แจ้งแล้ว');
+                        details = `${escapeHtml(entry.date)} | ${timeText} | ${entry.minutes} นาที | ${statusText}`;
                     }
 
                     const displayDate = entry.submittedDate || entry.createdAt;
@@ -945,7 +952,7 @@
                                     ${formattedDate}
                                 </span>
                             </div>
-                            <div class="entry-name">${entry.userName || 'ไม่ระบุชื่อ'}</div>
+                            <div class="entry-name">${escapeHtml(entry.userName || 'ไม่ระบุชื่อ')}</div>
                             <div class="entry-details">${details}</div>
                         </div>
                     `;

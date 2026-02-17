@@ -969,6 +969,14 @@
         const db = getFirestore(app);
         const analytics = getAnalytics(app);
 
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Get leave type icon
         function getLeaveTypeIcon(type) {
             const icons = {
@@ -1113,10 +1121,10 @@
                 } else {
                     todayLeavesList.innerHTML = todayLeaves.map(leave => `
                         <div class="leave-item">
-                            <div class="item-name">${leave.name}</div>
+                            <div class="item-name">${escapeHtml(leave.name)}</div>
                             <div class="item-detail">
                                 <span>${getLeaveTypeIcon(leave.type)}</span>
-                                <span>${leave.type} (${leave.days} วัน)</span>
+                                <span>${escapeHtml(leave.type)} (${leave.days} วัน)</span>
                             </div>
                         </div>
                     `).join('');
@@ -1134,10 +1142,10 @@
                 } else {
                     todayTripsList.innerHTML = todayTrips.map(trip => `
                         <div class="trip-item">
-                            <div class="item-name">${trip.name}</div>
+                            <div class="item-name">${escapeHtml(trip.name)}</div>
                             <div class="item-detail">
                                 <span class="fi fi-pin"></span>
-                                <span>${trip.subject} - ${trip.location}</span>
+                                <span>${escapeHtml(trip.subject)} - ${escapeHtml(trip.location)}</span>
                             </div>
                         </div>
                     `).join('');
@@ -1204,7 +1212,8 @@
                     const user = doc.data();
                     if (user.password === password) {
                         userFound = true;
-                        userData = { id: doc.id, ...user };
+                        const { password: _, ...userWithoutPassword } = user;
+                        userData = { id: doc.id, ...userWithoutPassword };
                     }
                 });
 

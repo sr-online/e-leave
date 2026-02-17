@@ -313,7 +313,8 @@
                     const admin = doc.data();
                     if (admin.password === password) {
                         adminFound = true;
-                        adminData = { id: doc.id, ...admin };
+                        const { password: _, ...adminWithoutPassword } = admin;
+                        adminData = { id: doc.id, ...adminWithoutPassword };
                     }
                 });
 
