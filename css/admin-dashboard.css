@@ -332,6 +332,15 @@ tr:hover {
 .action-buttons {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
+}
+
+.action-row td {
+    background: var(--bg);
+}
+
+.action-row:hover td {
+    background: var(--bg);
 }
 
 .modal {
