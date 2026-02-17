@@ -35,6 +35,25 @@
         const analytics = getAnalytics(app);
         console.log('✅ Firebase initialized successfully');
 
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Get fiscal year start date (Oct 1)
+        function getFiscalYearStart() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const oct1 = new Date(currentYear, 9, 1); // October = month 9
+            if (now < oct1) {
+                return new Date(currentYear - 1, 9, 1);
+            }
+            return oct1;
+        }
+
         // Check admin authentication
         const currentAdminData = sessionStorage.getItem('currentAdmin');
         if (!currentAdminData) {
@@ -111,6 +130,8 @@
             const titles = {
                 'dashboard': 'แดชบอร์ด',
                 'approvals': 'อนุมัติการลา',
+                'official-trips': 'การแจ้งไปราชการ',
+                'late-arrivals': 'การแจ้งเข้าสาย',
                 'personnel': 'จัดการบุคลากร',
                 'reports': 'รายงานสรุป',
                 'settings': 'ตั้งค่า'
@@ -119,6 +140,8 @@
             if (pageTitle) pageTitle.textContent = titles[tabName];
 
             if (tabName === 'approvals') loadApprovalsData();
+            if (tabName === 'official-trips') loadOfficialTripsData();
+            if (tabName === 'late-arrivals') loadLateArrivalsData();
             if (tabName === 'personnel') loadPersonnelData();
             if (tabName === 'reports') loadReportsData();
         };
@@ -395,44 +418,44 @@
                     }
                 });
 
-                // Load trip stats
-                const currentYear = now.getFullYear();
+                // Load trip stats - use fiscal year (Oct 1 - Sep 30)
+                const fiscalStart = getFiscalYearStart();
                 const currentMonth = now.getMonth();
                 const tripSnapshot = await getDocs(collection(db, 'official_trips'));
-                
+
                 let tripCount = 0;
                 let tripDays = 0;
-                
+
                 tripSnapshot.forEach(docSnap => {
                     const trip = docSnap.data();
                     const tripDate = trip.startDate ? new Date(trip.startDate) : (trip.date ? new Date(trip.date) : null);
-                    
-                    if (tripDate && tripDate.getFullYear() === currentYear) {
+
+                    if (tripDate && tripDate >= fiscalStart) {
                         tripCount++;
                         tripDays += trip.days || 1;
                     }
                 });
-                
-                // Load late arrival stats
+
+                // Load late arrival stats - use fiscal year
                 const lateSnapshot = await getDocs(collection(db, 'late_arrivals'));
-                
+
                 let lateCount = 0;
                 let lateCountMonth = 0;
-                
+
                 lateSnapshot.forEach(docSnap => {
                     const late = docSnap.data();
                     const lateDate = new Date(late.date);
-                    
-                    if (lateDate.getFullYear() === currentYear) {
+
+                    if (lateDate >= fiscalStart) {
                         lateCount++;
-                        
-                        if (lateDate.getMonth() === currentMonth) {
+
+                        if (lateDate.getMonth() === currentMonth && lateDate.getFullYear() === now.getFullYear()) {
                             lateCountMonth++;
                         }
                     }
                 });
 
-                // Load training statistics by type
+                // Load training statistics by type - use fiscal year
                 let selfDevCount = 0;
                 let workDevCount = 0;
                 let otherTrainingCount = 0;
@@ -440,10 +463,10 @@
                 tripSnapshot.forEach(docSnap => {
                     const trip = docSnap.data();
                     const tripDate = trip.startDate ? new Date(trip.startDate) : (trip.date ? new Date(trip.date) : null);
-                    
-                    if (tripDate && tripDate.getFullYear() === currentYear) {
+
+                    if (tripDate && tripDate >= fiscalStart) {
                         const trainingType = trip.trainingType || 'อื่นๆ';
-                        
+
                         if (trainingType === 'อบรมพัฒนาตนเอง') {
                             selfDevCount++;
                         } else if (trainingType === 'อบรมพัฒนาเกี่ยวกับงานที่รับผิดชอบ') {
@@ -571,11 +594,11 @@
                         html += `
                             <tr>
                                 <td>${index + 1}</td>
-                                <td><strong>${leave.userName}</strong></td>
+                                <td><strong>${escapeHtml(leave.userName)}</strong></td>
                                 <td>
                                     <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: ${style.bg}; color: ${style.color}; border-radius: 16px; font-size: 0.875rem; font-weight: 500;">
                                         <span>${style.icon}</span>
-                                        <span>${leave.type}</span>
+                                        <span>${escapeHtml(leave.type)}</span>
                                     </span>
                                 </td>
                                 <td>${startDate} - ${endDate}</td>
@@ -688,10 +711,10 @@
                         html += `
                             <tr>
                                 <td>${index + 1}</td>
-                                <td><strong>${trip.userName}</strong></td>
-                                <td>${trip.subject || '-'}</td>
-                                <td>${trip.location}</td>
-                                <td style="max-width: 400px;">${trip.purpose}</td>
+                                <td><strong>${escapeHtml(trip.userName)}</strong></td>
+                                <td>${escapeHtml(trip.subject || '-')}</td>
+                                <td>${escapeHtml(trip.location)}</td>
+                                <td style="max-width: 400px;">${escapeHtml(trip.purpose)}</td>
                             </tr>
                         `;
                     });
@@ -744,11 +767,11 @@
                     const style = getLeaveTypeStyle(leave.type);
 
                     row.innerHTML = `
-                        <td><strong>${leave.userName}</strong></td>
+                        <td><strong>${escapeHtml(leave.userName)}</strong></td>
                         <td>
                             <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: ${style.bg}; color: ${style.color}; border-radius: 16px; font-size: 0.875rem; font-weight: 500;">
                                 <span>${style.icon}</span>
-                                <span>${leave.type}</span>
+                                <span>${escapeHtml(leave.type)}</span>
                             </span>
                         </td>
                         <td>${startDate} - ${endDate}</td>
@@ -758,7 +781,7 @@
                             <div class="action-buttons">
                                 <button class="btn btn-success" onclick="approveLeave(this)">✓ อนุมัติ</button>
                                 <button class="btn btn-danger" onclick="rejectLeave(this)">✗ ไม่อนุมัติ</button>
-                                <button class="btn" style="background: #6366f1; margin-left: 5px;" onclick="generateLeaveForm1('${leave.id}')">📄 เอกสาร PDF</button>
+                                <button class="btn" style="background: #6366f1; color: white; margin-left: 5px;" onclick="generateLeaveForm1('${leave.id}')">📄 เอกสาร PDF</button>
                             </div>
                         </td>
                     `;
@@ -788,9 +811,9 @@
 
         function renderApprovalsTable(leaves) {
             const tbody = document.getElementById('approvalsTableBody');
-            
+
             if (leaves.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-light);">ไม่มีข้อมูล</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-light);">ไม่มีข้อมูล</td></tr>';
                 return;
             }
 
@@ -806,33 +829,35 @@
                     `<div class="action-buttons">
                         <button class="btn btn-success" onclick="approveLeave(this)">✓ อนุมัติ</button>
                         <button class="btn btn-danger" onclick="rejectLeave(this)">✗ ไม่อนุมัติ</button>
-                        <button class="btn" style="background: #f59e0b;" onclick="editLeave(this)">✏️ แก้ไข</button>
-                        <button class="btn" style="background: #ef4444;" onclick="cancelLeave(this)">🗑️ ยกเลิก</button>
-                        <button class="btn" style="background: #6366f1;" onclick="generateLeaveForm1('${leave.id}')">📄 เอกสาร PDF</button>
+                        <button class="btn" style="background: #f59e0b; color: white;" onclick="editLeave(this)">✏️ แก้ไข</button>
+                        <button class="btn" style="background: #ef4444; color: white;" onclick="cancelLeave(this)">🗑️ ยกเลิก</button>
+                        <button class="btn" style="background: #6366f1; color: white;" onclick="generateLeaveForm1('${leave.id}')">📄 เอกสาร PDF</button>
                     </div>` : 
                     leave.status === 'อนุมัติแล้ว' ?
                     `<div class="action-buttons">
-                        <span style="color: var(--success);">${leave.status}</span>
-                        <button class="btn" style="background: #10b981; margin-left: 10px;" onclick="generateLeaveForm2('${leave.id}')">📄 เอกสาร PDF</button>
+                        <span style="color: var(--success);">${escapeHtml(leave.status)}</span>
+                        <button class="btn" style="background: #10b981; color: white; margin-left: 10px;" onclick="generateLeaveForm2('${leave.id}')">📄 เอกสาร PDF</button>
                     </div>` :
-                    `<span style="color: var(--danger);">${leave.status}</span>`;
+                    `<span style="color: var(--danger);">${escapeHtml(leave.status)}</span>`;
 
                 const style = getLeaveTypeStyle(leave.type);
 
                 return `
                     <tr data-leave-id="${leave.id}">
                         <td>${submittedDate}</td>
-                        <td><strong>${leave.userName}</strong></td>
+                        <td><strong>${escapeHtml(leave.userName)}</strong></td>
                         <td>
                             <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: ${style.bg}; color: ${style.color}; border-radius: 16px; font-size: 0.875rem; font-weight: 500;">
                                 <span>${style.icon}</span>
-                                <span>${leave.type}</span>
+                                <span>${escapeHtml(leave.type)}</span>
                             </span>
                         </td>
                         <td>${startDate} - ${endDate}</td>
-                        <td>${leave.reason}</td>
-                        <td><span class="status-badge ${statusClass}">${leave.status}</span></td>
-                        <td>${actions}</td>
+                        <td>${escapeHtml(leave.reason)}</td>
+                        <td><span class="status-badge ${statusClass}">${escapeHtml(leave.status)}</span></td>
+                    </tr>
+                    <tr data-leave-id="${leave.id}" class="action-row">
+                        <td colspan="6" style="padding-top: 0; border-bottom: 2px solid var(--border);">${actions}</td>
                     </tr>
                 `;
             }).join('');
@@ -911,9 +936,9 @@
                 tbody.innerHTML = personnel.map((person, index) => `
                     <tr>
                         <td>${index + 1}</td>
-                        <td><strong>${person.name}</strong></td>
-                        <td>${person.position || 'ไม่ระบุตำแหน่ง'}</td>
-                        <td>${person.department || '-'}</td>
+                        <td><strong>${escapeHtml(person.name)}</strong></td>
+                        <td>${escapeHtml(person.position || 'ไม่ระบุตำแหน่ง')}</td>
+                        <td>${escapeHtml(person.department || '-')}</td>
                         <td>
                             <div class="action-buttons">
                                 <button class="btn btn-primary" onclick="viewPersonnelDetail('${person.id}')">
@@ -1151,7 +1176,7 @@
                 tbody.innerHTML = sortedUsers.map((user, index) => `
                     <tr>
                         <td>${index + 1}</td>
-                        <td><strong>${user.name}</strong></td>
+                        <td><strong>${escapeHtml(user.name)}</strong></td>
                         <td>${user.sick}</td>
                         <td>${user.maternity}</td>
                         <td>${user.helpWife}</td>
@@ -1244,7 +1269,7 @@
                         html += `
                             <div style="background: var(--bg); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--primary);">
                                 <div style="font-weight: 600; color: var(--text);">
-                                    ${index + 1}. ${leave.userName} - ${leave.type}
+                                    ${index + 1}. ${escapeHtml(leave.userName)} - ${escapeHtml(leave.type)}
                                 </div>
                                 <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 4px;">
                                     ${new Date(leave.startDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} - 
@@ -1832,8 +1857,8 @@
                     html += `
                         <tr>
                             <td style="position: sticky; left: 0; background: white;">${index + 1}</td>
-                            <td style="position: sticky; left: 50px; background: white;"><strong>${user.name}</strong></td>
-                            <td style="position: sticky; left: 230px; background: white;">${user.position}</td>
+                            <td style="position: sticky; left: 50px; background: white;"><strong>${escapeHtml(user.name)}</strong></td>
+                            <td style="position: sticky; left: 230px; background: white;">${escapeHtml(user.position)}</td>
                     `;
 
                     sortedLeaveTypes.forEach(type => {
@@ -1886,7 +1911,7 @@
                 console.error('Error loading report:', error);
                 document.getElementById('reportSummaryContainer').innerHTML = `
                     <div style="text-align: center; padding: 40px; color: var(--danger);">
-                        ❌ เกิดข้อผิดพลาด: ${error.message}
+                        ❌ เกิดข้อผิดพลาด: ${escapeHtml(error.message)}
                     </div>
                 `;
             }
@@ -2189,10 +2214,10 @@
                     const user = doc.data();
                     if (user.role === 'teacher') {
                         const sickRemaining = user.sickLeaveRemaining || 30;
-                        const personalRemaining = user.personalLeaveRemaining || 12;
-                        
+                        const personalRemaining = user.personalLeaveRemaining || 45;
+
                         const sickUsage = ((30 - sickRemaining) / 30) * 100;
-                        const personalUsage = ((12 - personalRemaining) / 12) * 100;
+                        const personalUsage = ((45 - personalRemaining) / 45) * 100;
                         const avgUsage = (sickUsage + personalUsage) / 2;
                         
                         if (sickRemaining === 0 && personalRemaining === 0) {
@@ -2374,7 +2399,7 @@
                             // Reset all leave types to default values
                             const resetData = {
                                 sickLeaveRemaining: 30,
-                                personalLeaveRemaining: 12,
+                                personalLeaveRemaining: 45,
                                 maternityLeaveRemaining: 90,
                                 vacationLeaveRemaining: 10,
                                 ordinationLeaveRemaining: 120,
@@ -2465,61 +2490,61 @@
                 
                 // Build table
                 const tableBody = [[
-                    {text: 'ประเภทการลา', bold: true, fontSize: 10},
-                    {text: 'ลามาแล้ว', bold: true, fontSize: 10},
-                    {text: 'ลาครั้งนี้', bold: true, fontSize: 10},
-                    {text: 'รวม', bold: true, fontSize: 10}
+                    {text: 'ประเภทการลา', bold: true, fontSize: 8},
+                    {text: 'ลามาแล้ว', bold: true, fontSize: 8},
+                    {text: 'ลาครั้งนี้', bold: true, fontSize: 8},
+                    {text: 'รวม', bold: true, fontSize: 8}
                 ]];
-                
+
                 allTypes.forEach(type => {
                     const s = stats[type];
                     const isCurrent = (type === leave.type);
                     if (s.times > 0 || isCurrent) {
                         tableBody.push([
-                            {text: type, fontSize: 9},
-                            {text: `${s.times}/${s.days}`, fontSize: 9},
-                            {text: isCurrent ? `1/${leave.days}` : '-', fontSize: 9},
-                            {text: `${s.times + (isCurrent?1:0)}/${s.days + (isCurrent?leave.days:0)}`, fontSize: 9}
+                            {text: type, fontSize: 7},
+                            {text: `${s.times}/${s.days}`, fontSize: 7},
+                            {text: isCurrent ? `1/${leave.days}` : '-', fontSize: 7},
+                            {text: `${s.times + (isCurrent?1:0)}/${s.days + (isCurrent?leave.days:0)}`, fontSize: 7}
                         ]);
                     }
                 });
-                
+
                 const docDefinition = {
                     pageSize: 'A4',
                     pageMargins: [40, 40, 40, 40],
-                    defaultStyle: {font: 'THSarabunNew', fontSize: 12},
+                    defaultStyle: {font: 'THSarabunNew', fontSize: 10},
                     content: [
-                        {text: 'ใบลา', alignment: 'center', fontSize: 16, bold: true, margin: [0,0,0,15]},
-                        {text: 'เขียนที่ โรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'right', fontSize: 12, margin: [0,0,0,3]},
-                        {text: `วันที่  ${formatThaiDate(leave.submittedDate)}`, alignment: 'right', fontSize: 12, margin: [0,0,0,15]},
-                        {text: `เรื่อง   ${leave.type}`, fontSize: 12, margin: [0,0,0,8]},
-                        {text: 'เรียน  ผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 12, margin: [0,0,0,10]},
-                        {text: [{text: '       ข้าพเจ้า ', fontSize: 12}, {text: leave.userName, bold: true, fontSize: 12}, {text: ' ตำแหน่ง ', fontSize: 12}, {text: leave.userPosition || 'ครู', bold: true, fontSize: 12}, {text: ' สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', fontSize: 12}], margin: [0,0,0,8]},
-                        {text: [{text: 'ขอลา ', fontSize: 12}, {text: leave.type, bold: true, fontSize: 12}, {text: ' เนื่องจาก ', fontSize: 12}, {text: leave.reason, bold: true, fontSize: 12}, {text: ' ตั้งแต่วันที่ ', fontSize: 12}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 12}, {text: ' ถึงวันที่ ', fontSize: 12}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 12}, {text: ' มีกำหนด ', fontSize: 12}, {text: `${leave.days}`, bold: true, fontSize: 12}, {text: ' วัน', fontSize: 12}], margin: [0,0,0,8]},
-                        {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone || '-'}`, fontSize: 12, margin: [0,0,0,15]},
-                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 12, margin: [0,0,0,30]},
-                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 12, margin: [0,0,0,15]},
-                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 11, margin: [0,0,0,5]},
+                        {text: 'ใบลา', alignment: 'center', fontSize: 14, bold: true, margin: [0,0,0,15]},
+                        {text: 'เขียนที่ โรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'right', fontSize: 10, margin: [0,0,0,3]},
+                        {text: `วันที่  ${formatThaiDate(leave.submittedDate)}`, alignment: 'right', fontSize: 10, margin: [0,0,0,15]},
+                        {text: `เรื่อง   ${leave.type}`, fontSize: 10, margin: [0,0,0,8]},
+                        {text: 'เรียน  ผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 10, margin: [0,0,0,10]},
+                        {text: [{text: '       ข้าพเจ้า ', fontSize: 10}, {text: leave.userName, bold: true, fontSize: 10}, {text: ' ตำแหน่ง ', fontSize: 10}, {text: leave.userPosition || 'ครู', bold: true, fontSize: 10}, {text: ' สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', fontSize: 10}], margin: [0,0,0,8]},
+                        {text: [{text: 'ขอลา ', fontSize: 10}, {text: leave.type, bold: true, fontSize: 10}, {text: ' เนื่องจาก ', fontSize: 10}, {text: leave.reason, bold: true, fontSize: 10}, {text: ' ตั้งแต่วันที่ ', fontSize: 10}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 10}, {text: ' ถึงวันที่ ', fontSize: 10}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 10}, {text: ' มีกำหนด ', fontSize: 10}, {text: `${leave.days}`, bold: true, fontSize: 10}, {text: ' วัน', fontSize: 10}], margin: [0,0,0,8]},
+                        {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone || '-'}`, fontSize: 10, margin: [0,0,0,15]},
+                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 10, margin: [0,0,0,30]},
+                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
+                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 9, margin: [0,0,0,5]},
                         {table: {headerRows: 1, widths: ['*', 60, 60, 60], body: tableBody}, layout: {hLineWidth: () => 0.5, vLineWidth: () => 0.5}, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) ____________________________  ผู้ตรวจสอบ', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: `วันที่ ${formatThaiDate(new Date())}`, alignment: 'center', fontSize: 12, margin: [0,0,0,15]},
-                        {text: 'ความเห็นผู้บังคับบัญชา', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '.............................................................................', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '.............................................................................', fontSize: 12, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'วันที่ ____________________________', alignment: 'center', fontSize: 12, margin: [0,0,0,15]},
-                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 12, margin: [0,0,0,8]},
-                        {text: '______________________________________________________________', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '______________________________________________________________', alignment: 'center', fontSize: 12, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'วันที่ ____________________________', alignment: 'center', fontSize: 12, margin: [0,0,0,0]}
+                        {text: '(ลงชื่อ) ____________________________  ผู้ตรวจสอบ', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: `วันที่ ${formatThaiDate(new Date())}`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
+                        {text: 'ความเห็นผู้บังคับบัญชา', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '.............................................................................', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '.............................................................................', fontSize: 10, margin: [0,0,0,15]},
+                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'วันที่ ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
+                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 10, margin: [0,0,0,8]},
+                        {text: '______________________________________________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '______________________________________________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
+                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'วันที่ ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,0]}
                     ]
                 };
 
@@ -2571,55 +2596,55 @@
                     console.error('Query error:', e);
                 }
                 
-                const tableBody = [[{text: 'ประเภทการลา', bold: true, fontSize: 10}, {text: 'ลามาแล้ว', bold: true, fontSize: 10}, {text: 'ลาครั้งนี้', bold: true, fontSize: 10}, {text: 'รวม', bold: true, fontSize: 10}]];
-                
+                const tableBody = [[{text: 'ประเภทการลา', bold: true, fontSize: 8}, {text: 'ลามาแล้ว', bold: true, fontSize: 8}, {text: 'ลาครั้งนี้', bold: true, fontSize: 8}, {text: 'รวม', bold: true, fontSize: 8}]];
+
                 allTypes.forEach(type => {
                     const s = stats[type];
                     const isCurrent = (type === leave.type);
                     if (s.times > 0 || isCurrent) {
                         const before = isCurrent ? [Math.max(0, s.times-1), Math.max(0, s.days-leave.days)] : [s.times, s.days];
                         tableBody.push([
-                            {text: type, fontSize: 9},
-                            {text: `${before[0]}/${before[1]}`, fontSize: 9},
-                            {text: isCurrent ? `1/${leave.days}` : '-', fontSize: 9},
-                            {text: `${s.times}/${s.days}`, fontSize: 9}
+                            {text: type, fontSize: 7},
+                            {text: `${before[0]}/${before[1]}`, fontSize: 7},
+                            {text: isCurrent ? `1/${leave.days}` : '-', fontSize: 7},
+                            {text: `${s.times}/${s.days}`, fontSize: 7}
                         ]);
                     }
                 });
-                
+
                 const docDefinition = {
-                    pageSize: 'A4', pageMargins: [40,40,40,40], defaultStyle: {font: 'THSarabunNew', fontSize: 12},
+                    pageSize: 'A4', pageMargins: [40,40,40,40], defaultStyle: {font: 'THSarabunNew', fontSize: 10},
                     content: [
-                        {text: 'ใบลา', alignment: 'center', fontSize: 16, bold: true, margin: [0,0,0,15]},
-                        {text: 'เขียนที่ โรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'right', fontSize: 12, margin: [0,0,0,3]},
-                        {text: `วันที่  ${formatThaiDate(leave.submittedDate)}`, alignment: 'right', fontSize: 12, margin: [0,0,0,15]},
-                        {text: `เรื่อง   ${leave.type}`, fontSize: 12, margin: [0,0,0,8]},
-                        {text: 'เรียน  ผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 12, margin: [0,0,0,10]},
-                        {text: [{text: '       ข้าพเจ้า ', fontSize: 12}, {text: leave.userName, bold: true, fontSize: 12}, {text: ' ตำแหน่ง ', fontSize: 12}, {text: leave.userPosition||'ครู', bold: true, fontSize: 12}, {text: ' สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', fontSize: 12}], margin: [0,0,0,8]},
-                        {text: [{text: 'ขอลา ', fontSize: 12}, {text: leave.type, bold: true, fontSize: 12}, {text: ' เนื่องจาก ', fontSize: 12}, {text: leave.reason, bold: true, fontSize: 12}], margin: [0,0,0,8]},
-                        {text: [{text: 'ตั้งแต่วันที่ ', fontSize: 12}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 12}, {text: ' ถึงวันที่ ', fontSize: 12}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 12}, {text: ' รวม ', fontSize: 12}, {text: `${leave.days}`, bold: true, fontSize: 12}, {text: ' วัน', fontSize: 12}], margin: [0,0,0,8]},
-                        {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone||'-'}`, fontSize: 12, margin: [0,0,0,15]},
-                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 12, margin: [0,0,0,30]},
-                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 12, margin: [0,0,0,15]},
-                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 11, margin: [0,0,0,5]},
+                        {text: 'ใบลา', alignment: 'center', fontSize: 14, bold: true, margin: [0,0,0,15]},
+                        {text: 'เขียนที่ โรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'right', fontSize: 10, margin: [0,0,0,3]},
+                        {text: `วันที่  ${formatThaiDate(leave.submittedDate)}`, alignment: 'right', fontSize: 10, margin: [0,0,0,15]},
+                        {text: `เรื่อง   ${leave.type}`, fontSize: 10, margin: [0,0,0,8]},
+                        {text: 'เรียน  ผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 10, margin: [0,0,0,10]},
+                        {text: [{text: '       ข้าพเจ้า ', fontSize: 10}, {text: leave.userName, bold: true, fontSize: 10}, {text: ' ตำแหน่ง ', fontSize: 10}, {text: leave.userPosition||'ครู', bold: true, fontSize: 10}, {text: ' สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', fontSize: 10}], margin: [0,0,0,8]},
+                        {text: [{text: 'ขอลา ', fontSize: 10}, {text: leave.type, bold: true, fontSize: 10}, {text: ' เนื่องจาก ', fontSize: 10}, {text: leave.reason, bold: true, fontSize: 10}], margin: [0,0,0,8]},
+                        {text: [{text: 'ตั้งแต่วันที่ ', fontSize: 10}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 10}, {text: ' ถึงวันที่ ', fontSize: 10}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 10}, {text: ' รวม ', fontSize: 10}, {text: `${leave.days}`, bold: true, fontSize: 10}, {text: ' วัน', fontSize: 10}], margin: [0,0,0,8]},
+                        {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone||'-'}`, fontSize: 10, margin: [0,0,0,15]},
+                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 10, margin: [0,0,0,30]},
+                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
+                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 9, margin: [0,0,0,5]},
                         {table: {headerRows: 1, widths: ['*',60,60,60], body: tableBody}, layout: {hLineWidth: ()=>0.5, vLineWidth: ()=>0.5}, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) นางสาวเอื้ออารี เอกพันธ์  ผู้ตรวจสอบ', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 12, margin: [0,0,0,15]},
-                        {text: 'ความเห็นผู้บังคับบัญชา', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'อนุมัติ', bold: true, fontSize: 12, alignment: 'center', margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) นายอภิรักขภูมิ ยันตะบุศย์', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 12, margin: [0,0,0,15]},
-                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 12, margin: [0,0,0,8]},
-                        {text: 'อนุมัติให้ลาตามที่ขอ', alignment: 'center', fontSize: 12, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) นายเทอดไทย  หอมสมบัติ', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 12, margin: [0,0,0,3]},
-                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 12, margin: [0,0,0,0]}
+                        {text: '(ลงชื่อ) นางสาวเอื้ออารี เอกพันธ์  ผู้ตรวจสอบ', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
+                        {text: 'ความเห็นผู้บังคับบัญชา', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'อนุมัติ', bold: true, fontSize: 10, alignment: 'center', margin: [0,0,0,15]},
+                        {text: '(ลงชื่อ) นายอภิรักขภูมิ ยันตะบุศย์', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
+                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 10, margin: [0,0,0,8]},
+                        {text: 'อนุมัติให้ลาตามที่ขอ', alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
+                        {text: '(ลงชื่อ) นายเทอดไทย  หอมสมบัติ', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 10, margin: [0,0,0,0]}
                     ]
                 };
                 pdfMake.createPdf(docDefinition).download(`ใบลา_อนุมัติ_${leave.userName}_${formatThaiDate(approvedDate)}.pdf`);
@@ -2762,18 +2787,18 @@
                     return `
                         <tr>
                             <td>${submittedDate}</td>
-                            <td><strong>${trip.userName}</strong></td>
-                            <td>${trip.subject || '-'}</td>
+                            <td><strong>${escapeHtml(trip.userName)}</strong></td>
+                            <td>${escapeHtml(trip.subject || '-')}</td>
                             <td>${dateDisplay}</td>
-                            <td>${trip.location}</td>
-                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${trip.purpose}</td>
-                            <td><span class="status-badge status-approved">${trip.status}</span></td>
+                            <td>${escapeHtml(trip.location)}</td>
+                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(trip.purpose)}</td>
+                            <td><span class="status-badge status-approved">${escapeHtml(trip.status)}</span></td>
                         </tr>
                     `;
                 }).join('');
             }, (error) => {
                 console.error('Error loading official trips:', error);
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--danger);">เกิดข้อผิดพลาด: ' + error.message + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--danger);">เกิดข้อผิดพลาด: ' + escapeHtml(error.message) + '</td></tr>';
             });
         }
 
@@ -2847,17 +2872,17 @@
                     return `
                         <tr>
                             <td>${submittedDate}</td>
-                            <td><strong>${late.userName}</strong></td>
+                            <td><strong>${escapeHtml(late.userName)}</strong></td>
                             <td>${date}</td>
-                            <td>${late.arrivalTime} น.</td>
-                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${late.reason}</td>
-                            <td><span class="status-badge status-approved">${late.status}</span></td>
+                            <td>${escapeHtml(late.arrivalTime)} น.</td>
+                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(late.reason)}</td>
+                            <td><span class="status-badge status-approved">${escapeHtml(late.status)}</span></td>
                         </tr>
                     `;
                 }).join('');
             }, (error) => {
                 console.error('Error loading late arrivals:', error);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--danger);">เกิดข้อผิดพลาด: ' + error.message + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--danger);">เกิดข้อผิดพลาด: ' + escapeHtml(error.message) + '</td></tr>';
             });
         }
 
@@ -3051,8 +3076,8 @@
                     html += `
                         <tr style="background: ${rowBg}; transition: background 0.2s ease;">
                             <td style="padding: 12px 15px; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: ${rowBg}; font-weight: 500;">${index + 1}</td>
-                            <td style="padding: 12px 15px; border-bottom: 1px solid var(--border); position: sticky; left: 60px; background: ${rowBg}; font-weight: 500;">${user.name}</td>
-                            <td style="padding: 12px 15px; border-bottom: 1px solid var(--border); position: sticky; left: 280px; background: ${rowBg}; color: var(--text-light);">${user.position}</td>
+                            <td style="padding: 12px 15px; border-bottom: 1px solid var(--border); position: sticky; left: 60px; background: ${rowBg}; font-weight: 500;">${escapeHtml(user.name)}</td>
+                            <td style="padding: 12px 15px; border-bottom: 1px solid var(--border); position: sticky; left: 280px; background: ${rowBg}; color: var(--text-light);">${escapeHtml(user.position)}</td>
                             <td style="padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: center; font-weight: 600; color: ${user.trips > 0 ? '#10b981' : 'var(--text-light)'};">${user.trips}</td>
                             <td style="padding: 12px 15px; border-bottom: 1px solid var(--border); text-align: center; font-weight: 600; color: ${user.lates > 0 ? '#f59e0b' : 'var(--text-light)'};">${user.lates}</td>
                         </tr>
@@ -3183,7 +3208,7 @@
                 document.getElementById('trainingTab2').style.opacity = '1';
             } else if (type === 'other') {
                 document.getElementById('otherTrainingList').style.display = 'block';
-                document.getElementById('trainingTab3').style.display = '1';
+                document.getElementById('trainingTab3').style.opacity = '1';
             }
         };
 
@@ -3270,11 +3295,11 @@
                 return `
                     <tr>
                         <td style="text-align: center;">${index + 1}</td>
-                        <td>${trip.userName || '-'}</td>
-                        <td>${trip.subject || '-'}</td>
+                        <td>${escapeHtml(trip.userName || '-')}</td>
+                        <td>${escapeHtml(trip.subject || '-')}</td>
                         <td style="text-align: center;">${startDate}${endDate}</td>
                         <td style="text-align: center;">${trip.days || 1} วัน</td>
-                        <td>${trip.location || '-'}</td>
+                        <td>${escapeHtml(trip.location || '-')}</td>
                     </tr>
                 `;
             }).join('');

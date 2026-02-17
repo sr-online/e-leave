@@ -95,10 +95,10 @@ function checkLeaveBalance(leaveType, days, userLeaveData) {
         'ลาพักผ่อน': userLeaveData.vacationLeaveRemaining || 10,
         'ลาอุปสมบท': userLeaveData.ordinationLeaveRemaining || 120,
         'ลาศึกษา': userLeaveData.studyLeaveRemaining || 365,
-        'ลาปฏิบัติงานองค์การระหว่างประเทศ': userLeaveData.intlOrgLeaveRemaining || 365,
-        'ลาฟื้นฟูสมรรถภาพ': userLeaveData.rehabilitationLeaveRemaining || 365,
+        'ลาปฏิบัติงานองค์การระหว่างประเทศ': userLeaveData.internationalLeaveRemaining || 730,
+        'ลาฟื้นฟูสมรรถภาพ': userLeaveData.rehabLeaveRemaining || 180,
         'ลาติดตามคู่สมรส': userLeaveData.followSpouseLeaveRemaining || 365,
-        'ลาปฏิบัติงานในหน่วยงานอื่น': userLeaveData.otherWorkLeaveRemaining || 365
+        'ลาปฏิบัติงานในหน่วยงานอื่น': userLeaveData.workOtherLeaveRemaining || 365
     };
 
     const remaining = balanceMap[leaveType] || 0;
