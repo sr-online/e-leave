@@ -2452,6 +2452,23 @@
             return `${date.getDate()} ${months[date.getMonth() + 1]} ${thaiYear}`;
         }
 
+        // Helper: Load image as base64 for PDF
+        async function loadImageAsBase64(url) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) {
+                console.error('Image load error:', url, e);
+                return null;
+            }
+        }
+
         // Generate Leave Form 1 (Pending)
         // Generate Leave Form 1 (Pending) - WITH TABLE
         window.generateLeaveForm1 = async function(leaveId) {
@@ -2470,10 +2487,11 @@
                 const stats = {};
                 allTypes.forEach(t => stats[t] = {times: 0, days: 0});
                 
+                const prevLeaveDocs = [];
                 try {
                     const q = query(
-                        collection(db, 'leaves'), 
-                        where('userId', '==', leave.userId), 
+                        collection(db, 'leaves'),
+                        where('userId', '==', leave.userId),
                         where('status', '==', 'อนุมัติแล้ว'),
                         limit(100)
                     );
@@ -2483,11 +2501,15 @@
                             stats[d.data().type].times++;
                             stats[d.data().type].days += (d.data().days || 0);
                         }
+                        if (d.id !== leaveId) prevLeaveDocs.push({id: d.id, ...d.data()});
                     });
                 } catch (e) {
                     console.error('Stats error:', e);
                 }
-                
+                prevLeaveDocs.sort((a,b) => new Date(b.startDate) - new Date(a.startDate));
+                const lastLeaveData = prevLeaveDocs.length > 0 ? prevLeaveDocs[0] : null;
+                const d3Img = await loadImageAsBase64('img/D3.png');
+
                 // Build table
                 const tableBody = [[
                     {text: 'ประเภทการลา', bold: true, fontSize: 8},
@@ -2511,39 +2533,41 @@
 
                 const docDefinition = {
                     pageSize: 'A4',
-                    pageMargins: [40, 40, 40, 40],
+                    pageMargins: [35, 22, 35, 22],
                     defaultStyle: {font: 'THSarabunNew', fontSize: 10},
                     content: [
-                        {text: 'ใบลา', alignment: 'center', fontSize: 14, bold: true, margin: [0,0,0,15]},
-                        {text: 'เขียนที่ โรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'right', fontSize: 10, margin: [0,0,0,3]},
-                        {text: `วันที่  ${formatThaiDate(leave.submittedDate)}`, alignment: 'right', fontSize: 10, margin: [0,0,0,15]},
-                        {text: `เรื่อง   ${leave.type}`, fontSize: 10, margin: [0,0,0,8]},
-                        {text: 'เรียน  ผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 10, margin: [0,0,0,10]},
-                        {text: [{text: '       ข้าพเจ้า ', fontSize: 10}, {text: leave.userName, bold: true, fontSize: 10}, {text: ' ตำแหน่ง ', fontSize: 10}, {text: leave.userPosition || 'ครู', bold: true, fontSize: 10}, {text: ' สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', fontSize: 10}], margin: [0,0,0,8]},
-                        {text: [{text: 'ขอลา ', fontSize: 10}, {text: leave.type, bold: true, fontSize: 10}, {text: ' เนื่องจาก ', fontSize: 10}, {text: leave.reason, bold: true, fontSize: 10}, {text: ' ตั้งแต่วันที่ ', fontSize: 10}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 10}, {text: ' ถึงวันที่ ', fontSize: 10}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 10}, {text: ' มีกำหนด ', fontSize: 10}, {text: `${leave.days}`, bold: true, fontSize: 10}, {text: ' วัน', fontSize: 10}], margin: [0,0,0,8]},
-                        {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone || '-'}`, fontSize: 10, margin: [0,0,0,15]},
-                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 10, margin: [0,0,0,30]},
-                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
-                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 9, margin: [0,0,0,5]},
-                        {table: {headerRows: 1, widths: ['*', 60, 60, 60], body: tableBody}, layout: {hLineWidth: () => 0.5, vLineWidth: () => 0.5}, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) ____________________________  ผู้ตรวจสอบ', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: `วันที่ ${formatThaiDate(new Date())}`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
-                        {text: 'ความเห็นผู้บังคับบัญชา', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '.............................................................................', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '.............................................................................', fontSize: 10, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: 'วันที่ ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
-                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 10, margin: [0,0,0,8]},
-                        {text: '______________________________________________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '______________________________________________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'ใบลา', alignment: 'center', fontSize: 14, bold: true, margin: [0,0,0,5]},
+                        {text: 'เขียนที่ โรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'right', fontSize: 10, margin: [0,0,0,2]},
+                        {text: `วันที่  ${formatThaiDate(leave.submittedDate)}`, alignment: 'right', fontSize: 10, margin: [0,0,0,6]},
+                        {text: `เรื่อง   ${leave.type}`, fontSize: 10, margin: [0,0,0,4]},
+                        {text: 'เรียน  ผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 10, margin: [0,0,0,5]},
+                        {text: [{text: '       ข้าพเจ้า ', fontSize: 10}, {text: leave.userName, bold: true, fontSize: 10}, {text: ' ตำแหน่ง ', fontSize: 10}, {text: leave.userPosition || 'ครู', bold: true, fontSize: 10}, {text: ' สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', fontSize: 10}], margin: [0,0,0,4]},
+                        {text: [{text: 'ขอลา ', fontSize: 10}, {text: leave.type, bold: true, fontSize: 10}, {text: ' เนื่องจาก ', fontSize: 10}, {text: leave.reason, bold: true, fontSize: 10}, {text: ' ตั้งแต่วันที่ ', fontSize: 10}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 10}, {text: ' ถึงวันที่ ', fontSize: 10}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 10}, {text: ' มีกำหนด ', fontSize: 10}, {text: `${leave.days}`, bold: true, fontSize: 10}, {text: ' วัน', fontSize: 10}], margin: [0,0,0,4]},
+                        ...(lastLeaveData ? [{text: [{text: 'ข้าพเจ้าได้ลา ', fontSize: 10}, {text: lastLeaveData.type, bold: true, fontSize: 10}, {text: ' ครั้งสุดท้ายตั้งแต่วันที่ ', fontSize: 10}, {text: formatThaiDate(lastLeaveData.startDate), bold: true, fontSize: 10}, {text: ' ถึงวันที่ ', fontSize: 10}, {text: formatThaiDate(lastLeaveData.endDate), bold: true, fontSize: 10}, {text: ' มีกำหนด ', fontSize: 10}, {text: `${lastLeaveData.days}`, bold: true, fontSize: 10}, {text: ' วัน', fontSize: 10}], margin: [0,0,0,4]}] : []),
+                        {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone || '-'}`, fontSize: 10, margin: [0,0,0,8]},
+                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 10, margin: [0,0,0,10]},
+                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 10, margin: [0,0,0,6]},
+                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 9, margin: [0,0,0,3]},
+                        {table: {headerRows: 1, widths: ['*', 60, 60, 60], body: tableBody}, layout: {hLineWidth: () => 0.5, vLineWidth: () => 0.5}, margin: [0,0,0,6]},
+                        ...(d3Img ? [{image: d3Img, width: 100, alignment: 'center', margin: [0,3,0,-10]}] : []),
+                        {text: '(ลงชื่อ) ____________________________  ผู้ตรวจสอบ', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: `วันที่ ${formatThaiDate(new Date())}`, alignment: 'center', fontSize: 10, margin: [0,0,0,6]},
+                        {text: 'เสนอผู้อำนวยการเพื่อพิจารณาอนุญาต', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '.............................................................................', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '.............................................................................', fontSize: 10, margin: [0,0,0,6]},
+                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: 'วันที่ ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,6]},
+                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 10, margin: [0,0,0,4]},
+                        {text: '______________________________________________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '______________________________________________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,6]},
+                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
                         {text: 'วันที่ ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,0]}
                     ]
                 };
@@ -2580,6 +2604,7 @@
                 const stats = {};
                 allTypes.forEach(t => stats[t] = {times: 0, days: 0});
                 
+                const prevLeaveDocs2 = [];
                 try {
                     const q = query(collection(db, 'leaves'), where('userId', '==', leave.userId), where('status', '==', 'อนุมัติแล้ว'), limit(100));
                     const snap = await getDocs(q);
@@ -2590,11 +2615,19 @@
                             stats[data.type].times++;
                             stats[data.type].days += (data.days || 0);
                         }
+                        if (d.id !== leaveId) prevLeaveDocs2.push({id: d.id, ...data});
                     });
                     console.log('Stats:', stats);
                 } catch (e) {
                     console.error('Query error:', e);
                 }
+                prevLeaveDocs2.sort((a,b) => new Date(b.startDate) - new Date(a.startDate));
+                const lastLeaveData2 = prevLeaveDocs2.length > 0 ? prevLeaveDocs2[0] : null;
+                const [d3Img2, d2Img2, d1Img2] = await Promise.all([
+                    loadImageAsBase64('img/D3.png'),
+                    loadImageAsBase64('img/D2.png'),
+                    loadImageAsBase64('img/D1.png')
+                ]);
                 
                 const tableBody = [[{text: 'ประเภทการลา', bold: true, fontSize: 8}, {text: 'ลามาแล้ว', bold: true, fontSize: 8}, {text: 'ลาครั้งนี้', bold: true, fontSize: 8}, {text: 'รวม', bold: true, fontSize: 8}]];
 
@@ -2613,37 +2646,40 @@
                 });
 
                 const docDefinition = {
-                    pageSize: 'A4', pageMargins: [40,40,40,40], defaultStyle: {font: 'THSarabunNew', fontSize: 10},
+                    pageSize: 'A4', pageMargins: [35,22,35,22], defaultStyle: {font: 'THSarabunNew', fontSize: 10},
                     content: [
-                        {text: 'ใบลา', alignment: 'center', fontSize: 14, bold: true, margin: [0,0,0,15]},
-                        {text: 'เขียนที่ โรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'right', fontSize: 10, margin: [0,0,0,3]},
-                        {text: `วันที่  ${formatThaiDate(leave.submittedDate)}`, alignment: 'right', fontSize: 10, margin: [0,0,0,15]},
-                        {text: `เรื่อง   ${leave.type}`, fontSize: 10, margin: [0,0,0,8]},
-                        {text: 'เรียน  ผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 10, margin: [0,0,0,10]},
-                        {text: [{text: '       ข้าพเจ้า ', fontSize: 10}, {text: leave.userName, bold: true, fontSize: 10}, {text: ' ตำแหน่ง ', fontSize: 10}, {text: leave.userPosition||'ครู', bold: true, fontSize: 10}, {text: ' สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', fontSize: 10}], margin: [0,0,0,8]},
-                        {text: [{text: 'ขอลา ', fontSize: 10}, {text: leave.type, bold: true, fontSize: 10}, {text: ' เนื่องจาก ', fontSize: 10}, {text: leave.reason, bold: true, fontSize: 10}], margin: [0,0,0,8]},
-                        {text: [{text: 'ตั้งแต่วันที่ ', fontSize: 10}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 10}, {text: ' ถึงวันที่ ', fontSize: 10}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 10}, {text: ' รวม ', fontSize: 10}, {text: `${leave.days}`, bold: true, fontSize: 10}, {text: ' วัน', fontSize: 10}], margin: [0,0,0,8]},
-                        {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone||'-'}`, fontSize: 10, margin: [0,0,0,15]},
-                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 10, margin: [0,0,0,30]},
-                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
-                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 9, margin: [0,0,0,5]},
-                        {table: {headerRows: 1, widths: ['*',60,60,60], body: tableBody}, layout: {hLineWidth: ()=>0.5, vLineWidth: ()=>0.5}, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) นางสาวเอื้ออารี เอกพันธ์  ผู้ตรวจสอบ', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
-                        {text: 'ความเห็นผู้บังคับบัญชา', fontSize: 10, margin: [0,0,0,3]},
-                        {text: 'อนุมัติ', bold: true, fontSize: 10, alignment: 'center', margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) นายอภิรักขภูมิ ยันตะบุศย์', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
-                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 10, margin: [0,0,0,8]},
-                        {text: 'อนุมัติให้ลาตามที่ขอ', alignment: 'center', fontSize: 10, margin: [0,0,0,15]},
-                        {text: '(ลงชื่อ) นายเทอดไทย  หอมสมบัติ', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
-                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 10, margin: [0,0,0,3]},
+                        {text: 'ใบลา', alignment: 'center', fontSize: 14, bold: true, margin: [0,0,0,5]},
+                        {text: 'เขียนที่ โรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'right', fontSize: 10, margin: [0,0,0,2]},
+                        {text: `วันที่  ${formatThaiDate(leave.submittedDate)}`, alignment: 'right', fontSize: 10, margin: [0,0,0,6]},
+                        {text: `เรื่อง   ${leave.type}`, fontSize: 10, margin: [0,0,0,4]},
+                        {text: 'เรียน  ผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 10, margin: [0,0,0,5]},
+                        {text: [{text: '       ข้าพเจ้า ', fontSize: 10}, {text: leave.userName, bold: true, fontSize: 10}, {text: ' ตำแหน่ง ', fontSize: 10}, {text: leave.userPosition||'ครู', bold: true, fontSize: 10}, {text: ' สังกัดสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน', fontSize: 10}], margin: [0,0,0,4]},
+                        {text: [{text: 'ขอลา ', fontSize: 10}, {text: leave.type, bold: true, fontSize: 10}, {text: ' เนื่องจาก ', fontSize: 10}, {text: leave.reason, bold: true, fontSize: 10}], margin: [0,0,0,4]},
+                        {text: [{text: 'ตั้งแต่วันที่ ', fontSize: 10}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 10}, {text: ' ถึงวันที่ ', fontSize: 10}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 10}, {text: ' รวม ', fontSize: 10}, {text: `${leave.days}`, bold: true, fontSize: 10}, {text: ' วัน', fontSize: 10}], margin: [0,0,0,4]},
+                        ...(lastLeaveData2 ? [{text: [{text: 'ข้าพเจ้าได้ลา ', fontSize: 10}, {text: lastLeaveData2.type, bold: true, fontSize: 10}, {text: ' ครั้งสุดท้ายตั้งแต่วันที่ ', fontSize: 10}, {text: formatThaiDate(lastLeaveData2.startDate), bold: true, fontSize: 10}, {text: ' ถึงวันที่ ', fontSize: 10}, {text: formatThaiDate(lastLeaveData2.endDate), bold: true, fontSize: 10}, {text: ' มีกำหนด ', fontSize: 10}, {text: `${lastLeaveData2.days}`, bold: true, fontSize: 10}, {text: ' วัน', fontSize: 10}], margin: [0,0,0,4]}] : []),
+                        {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone||'-'}`, fontSize: 10, margin: [0,0,0,8]},
+                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 10, margin: [0,0,0,10]},
+                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 10, margin: [0,0,0,6]},
+                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 9, margin: [0,0,0,3]},
+                        {table: {headerRows: 1, widths: ['*',60,60,60], body: tableBody}, layout: {hLineWidth: ()=>0.5, vLineWidth: ()=>0.5}, margin: [0,0,0,6]},
+                        ...(d3Img2 ? [{image: d3Img2, width: 100, alignment: 'center', margin: [0,3,0,-10]}] : []),
+                        {text: '(ลงชื่อ) ____________________________  ผู้ตรวจสอบ', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 10, margin: [0,0,0,6]},
+                        {text: 'เสนอผู้อำนวยการเพื่อพิจารณาอนุญาต', fontSize: 10, margin: [0,0,0,3]},
+                        ...(d2Img2 ? [{image: d2Img2, width: 100, alignment: 'center', margin: [0,3,0,-10]}] : []),
+                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 10, margin: [0,0,0,6]},
+                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 10, margin: [0,0,0,4]},
+                        {text: 'อนุมัติให้ลาตามที่ขอ', alignment: 'center', fontSize: 10, margin: [0,0,0,6]},
+                        ...(d1Img2 ? [{image: d1Img2, width: 100, alignment: 'center', margin: [0,3,0,-10]}] : []),
+                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
+                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 10, margin: [0,0,0,2]},
                         {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 10, margin: [0,0,0,0]}
                     ]
                 };
