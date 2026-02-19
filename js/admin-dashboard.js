@@ -393,7 +393,8 @@
                     if (leave.status === 'อนุมัติแล้ว' && leave.approvedDate) {
                         const approvedDate = new Date(leave.approvedDate);
                         if (approvedDate >= firstDayOfMonth) {
-                            approvedCount++;
+                            // ลาต่อเนื่องไม่นับจำนวนครั้ง นับแค่วันลา
+                            if (!leave.isContinuation) approvedCount++;
                             approvedDays += leave.days || 0;
                         }
                     }
@@ -773,6 +774,7 @@
                                 <span>${style.icon}</span>
                                 <span>${escapeHtml(leave.type)}</span>
                             </span>
+                            ${leave.isContinuation ? '<span style="display:inline-flex;align-items:center;gap:3px;background:#fef3c7;color:#d97706;border:1px solid #f59e0b;border-radius:10px;padding:1px 7px;font-size:0.75rem;font-weight:600;margin-left:4px;">🔗 ต่อเนื่อง</span>' : ''}
                         </td>
                         <td>${startDate} - ${endDate}</td>
                         <td>${leave.days} วัน</td>
@@ -851,6 +853,7 @@
                                 <span>${style.icon}</span>
                                 <span>${escapeHtml(leave.type)}</span>
                             </span>
+                            ${leave.isContinuation ? '<span style="display:inline-flex;align-items:center;gap:3px;background:#fef3c7;color:#d97706;border:1px solid #f59e0b;border-radius:10px;padding:1px 7px;font-size:0.75rem;font-weight:600;margin-left:4px;">🔗 ต่อเนื่อง</span>' : ''}
                         </td>
                         <td>${startDate} - ${endDate}</td>
                         <td>${escapeHtml(leave.reason)}</td>
@@ -1497,9 +1500,12 @@
                             }
                             
                             if (leaveType) {
-                                userLeave[leaveType].count++;
+                                // ลาต่อเนื่องไม่นับจำนวนครั้ง นับแค่วันลา
+                                if (!leave.isContinuation) {
+                                    userLeave[leaveType].count++;
+                                    userLeave.totalCount++;
+                                }
                                 userLeave[leaveType].days += days;
-                                userLeave.totalCount++;
                                 userLeave.totalDays += days;
                             }
                         }
@@ -2497,11 +2503,13 @@
                     );
                     const snap = await getDocs(q);
                     snap.forEach(d => {
-                        if (d.id !== leaveId && stats[d.data().type]) {
-                            stats[d.data().type].times++;
-                            stats[d.data().type].days += (d.data().days || 0);
+                        const data = d.data();
+                        if (d.id !== leaveId && stats[data.type]) {
+                            // ลาต่อเนื่องไม่นับครั้ง นับแค่วัน
+                            if (!data.isContinuation) stats[data.type].times++;
+                            stats[data.type].days += (data.days || 0);
                         }
-                        if (d.id !== leaveId) prevLeaveDocs.push({id: d.id, ...d.data()});
+                        if (d.id !== leaveId) prevLeaveDocs.push({id: d.id, ...data});
                     });
                 } catch (e) {
                     console.error('Stats error:', e);
@@ -2521,12 +2529,13 @@
                 allTypes.forEach(type => {
                     const s = stats[type];
                     const isCurrent = (type === leave.type);
+                    const currentCount = (isCurrent && !leave.isContinuation) ? 1 : 0;
                     if (s.times > 0 || isCurrent) {
                         tableBody.push([
                             {text: type, fontSize: 7},
                             {text: `${s.times}/${s.days}`, fontSize: 7},
-                            {text: isCurrent ? `1/${leave.days}` : '-', fontSize: 7},
-                            {text: `${s.times + (isCurrent?1:0)}/${s.days + (isCurrent?leave.days:0)}`, fontSize: 7}
+                            {text: isCurrent ? `${currentCount}/${leave.days}` : '-', fontSize: 7},
+                            {text: `${s.times + currentCount}/${s.days + (isCurrent?leave.days:0)}`, fontSize: 7}
                         ]);
                     }
                 });
@@ -2612,7 +2621,8 @@
                     snap.forEach(d => {
                         const data = d.data();
                         if (stats[data.type]) {
-                            stats[data.type].times++;
+                            // ลาต่อเนื่องไม่นับครั้ง นับแค่วัน
+                            if (!data.isContinuation) stats[data.type].times++;
                             stats[data.type].days += (data.days || 0);
                         }
                         if (d.id !== leaveId) prevLeaveDocs2.push({id: d.id, ...data});
@@ -2634,12 +2644,16 @@
                 allTypes.forEach(type => {
                     const s = stats[type];
                     const isCurrent = (type === leave.type);
-                    if (s.times > 0 || isCurrent) {
-                        const before = isCurrent ? [Math.max(0, s.times-1), Math.max(0, s.days-leave.days)] : [s.times, s.days];
+                    if (s.times > 0 || (isCurrent && s.days > 0)) {
+                        // ถ้าเป็นใบลาปกติ: ถูกนับใน s.times แล้ว → before = s.times-1
+                        // ถ้าเป็นลาต่อเนื่อง: ไม่ถูกนับใน s.times → before = s.times (ไม่ต้องลบ)
+                        const timesBefore = (isCurrent && !leave.isContinuation) ? Math.max(0, s.times - 1) : s.times;
+                        const daysBefore = isCurrent ? Math.max(0, s.days - leave.days) : s.days;
+                        const currentCount = (isCurrent && !leave.isContinuation) ? 1 : 0;
                         tableBody.push([
                             {text: type, fontSize: 7},
-                            {text: `${before[0]}/${before[1]}`, fontSize: 7},
-                            {text: isCurrent ? `1/${leave.days}` : '-', fontSize: 7},
+                            {text: `${timesBefore}/${daysBefore}`, fontSize: 7},
+                            {text: isCurrent ? `${currentCount}/${leave.days}` : '-', fontSize: 7},
                             {text: `${s.times}/${s.days}`, fontSize: 7}
                         ]);
                     }
