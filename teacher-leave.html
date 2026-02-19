@@ -1385,18 +1385,22 @@
                         </select>
                     </div>
 
-                    <!-- Sick Leave Continuation Notice -->
-                    <div id="sickLeaveContinuationNotice" style="display: none; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                    <!-- Leave Continuation Notice -->
+                    <div id="leaveContinuationNotice" style="display: none; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
                         <div style="display: flex; align-items: start; gap: 15px;">
                             <div style="font-size: 2rem;"><span class="fi fi-medical" style="width:1.5em;height:1.5em"></span></div>
                             <div style="flex: 1;">
-                                <h3 style="margin: 0 0 10px 0; color: #d97706; font-size: 1.1rem;">พบใบลาป่วยของวันก่อนหน้า</h3>
-                                <div id="previousSickLeaveDetails" style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <h3 style="margin: 0 0 10px 0; color: #d97706; font-size: 1.1rem;">พบใบลาของวันก่อนหน้า</h3>
+                                <div id="previousLeaveDetails" style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 12px;">
                                     <!-- จะแสดงรายละเอียดที่นี่ -->
                                 </div>
-                                <p style="margin: 0; color: #92400e; font-weight: 500;">
-                                    <span class="fi fi-pin" style="width:1em;height:1em"></span> คุณสามารถลาป่วยต่อได้ (ไม่นับเป็นครั้งใหม่)
+                                <p style="margin: 0 0 10px 0; color: #92400e; font-weight: 500;">
+                                    <span class="fi fi-pin" style="width:1em;height:1em"></span> คุณสามารถลาต่อเนื่องได้ (จะสร้างใบลาใหม่อ้างอิงใบลาเดิม)
                                 </p>
+                                <div id="continuationEndDateSection" style="background: white; padding: 12px; border-radius: 8px;">
+                                    <label style="font-weight: 600; color: #92400e; display: block; margin-bottom: 6px;">วันสุดท้ายของการลาต่อเนื่อง <span style="color: #ef4444;">*</span></label>
+                                    <input type="date" id="continuationEndDate" style="border: 1px solid #d97706; border-radius: 6px; padding: 6px 10px; font-size: 1rem; width: 100%; box-sizing: border-box;">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1427,8 +1431,8 @@
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" onclick="resetLeaveForm()">ล้างข้อมูล</button>
                         <button type="submit" class="btn btn-primary" id="normalSubmitBtn">ส่งใบลา</button>
-                        <button type="button" class="btn" id="continueSickLeaveBtn" onclick="continueSickLeave()" style="display: none; background: #f59e0b; color: white;">
-                            ➕ ลาป่วยต่อ (วันนี้)
+                        <button type="button" class="btn" id="continueSickLeaveBtn" onclick="continueLeave()" style="display: none; background: #f59e0b; color: white;">
+                            ➕ ลาต่อเนื่อง
                         </button>
                     </div>
                 </form>
@@ -1711,56 +1715,51 @@
             const leaveType = document.getElementById('leaveType').value;
             const startDateInput = document.getElementById('startDate');
             const alertDiv = document.getElementById('leaveAlert');
-            
+
+            // Always hide continuation UI first, then check async
+            hideContinuationUI();
+
+            // Check for previous leave of same type for continuation
+            if (leaveType) {
+                checkPreviousLeave(leaveType);
+            }
+
             if (leaveType === 'ลาป่วย') {
-                // Check for previous sick leave
-                checkPreviousSickLeave();
-                
                 // ลาป่วย: can only select today, must be before 8:00 AM
                 const now = new Date();
                 const currentHour = now.getHours();
-                
+
                 startDateInput.min = today;
                 startDateInput.max = today;
                 startDateInput.value = today;
-                
+
                 if (currentHour >= 8) {
                     alertDiv.innerHTML = '<strong><span class="fi fi-warning"></span> คำเตือน:</strong> การลาป่วยต้องแจ้งภายในเวลา 08:00 น. ของวันที่ลา, กรุณาติดต่อเจ้าหน้าที่โดยตรง';
                     alertDiv.style.display = 'block';
                 } else {
                     alertDiv.style.display = 'none';
                 }
+            } else if (leaveType === 'ลากิจส่วนตัว') {
+                // ลากิจ: must be at least 3 days in advance
+                const minDate = new Date();
+                minDate.setDate(minDate.getDate() + 3);
+                const minDateStr = minDate.toISOString().split('T')[0];
+
+                startDateInput.min = minDateStr;
+                startDateInput.max = '';
+                startDateInput.value = '';
+
+                alertDiv.innerHTML = '<strong><span class="fi fi-pin"></span> หมายเหตุ:</strong> การลากิจส่วนตัวต้องแจ้งล่วงหน้าอย่างน้อย 3 วัน';
+                alertDiv.style.display = 'block';
             } else {
-                // Hide continuation notice for non-sick leave
-                document.getElementById('sickLeaveContinuationNotice').style.display = 'none';
-                document.getElementById('continueSickLeaveBtn').style.display = 'none';
-                document.getElementById('normalSubmitBtn').style.display = 'inline-block';
-                document.getElementById('continuationLeaveId').value = '';
-                unlockFormFields();
-                
-                if (leaveType === 'ลากิจส่วนตัว') {
-                    // ลากิจ: must be at least 3 days in advance
-                    const minDate = new Date();
-                    minDate.setDate(minDate.getDate() + 3);
-                    const minDateStr = minDate.toISOString().split('T')[0];
-                    
-                    startDateInput.min = minDateStr;
-                    startDateInput.max = '';
-                    startDateInput.value = '';
-                    
-                    alertDiv.innerHTML = '<strong><span class="fi fi-pin"></span> หมายเหตุ:</strong> การลากิจส่วนตัวต้องแจ้งล่วงหน้าอย่างน้อย 3 วัน';
-                    alertDiv.style.display = 'block';
-                } else {
-                    startDateInput.min = today;
-                    startDateInput.max = '';
-                    alertDiv.style.display = 'none';
-                }
+                startDateInput.min = today;
+                startDateInput.max = '';
+                alertDiv.style.display = 'none';
             }
         };
 
-        // Check for previous sick leave (simple version - no complex queries)
-        function checkPreviousSickLeave() {
-            // Validate currentUserId
+        // Check for previous leave of any type for continuation
+        function checkPreviousLeave(leaveType) {
             if (!currentUserId) {
                 console.error('currentUserId not set');
                 hideContinuationUI();
@@ -1770,207 +1769,194 @@
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = yesterday.toISOString().split('T')[0];
-            
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const todayStr = today.toISOString().split('T')[0];
 
-            // Simple query - only 2 where clauses
+            const todayStr = today; // reuse outer-scope today string
+
+            // Query leaves of the same type for this user
             const q = query(
                 collection(db, 'leaves'),
                 where('userId', '==', currentUserId),
-                where('type', '==', 'ลาป่วย')
+                where('type', '==', leaveType)
             );
 
             getDocs(q).then(snapshot => {
-                let foundContinuation = false;
-                let alreadyContinuedToday = false;
-                
+                const docs = [];
                 snapshot.forEach(docSnapshot => {
-                    const leave = docSnapshot.data();
-                    
-                    // Check if already continued to today
-                    if (leave.endDate === todayStr && 
-                        (leave.status === 'รออนุมัติ' || leave.status === 'อนุมัติแล้ว')) {
-                        alreadyContinuedToday = true;
-                    }
-                    
-                    // Check if endDate is yesterday AND status is pending or approved
-                    if (leave.endDate === yesterdayStr && 
-                        (leave.status === 'รออนุมัติ' || leave.status === 'อนุมัติแล้ว')) {
-                        foundContinuation = true;
-                        showContinuationUI(docSnapshot.id, leave, alreadyContinuedToday);
-                    }
+                    docs.push({ id: docSnapshot.id, data: docSnapshot.data() });
                 });
 
-                if (!foundContinuation) {
-                    hideContinuationUI();
+                // Pass 1: find a parent leave ending yesterday
+                let parentLeaveId = null;
+                let parentLeave = null;
+                for (const d of docs) {
+                    if (d.data.endDate === yesterdayStr &&
+                        (d.data.status === 'รออนุมัติ' || d.data.status === 'อนุมัติแล้ว')) {
+                        parentLeaveId = d.id;
+                        parentLeave = d.data;
+                        break;
+                    }
                 }
+
+                if (!parentLeaveId) {
+                    hideContinuationUI();
+                    return;
+                }
+
+                // Pass 2: check if a continuation for this parent already exists (starts today)
+                let alreadyContinuedToday = false;
+                for (const d of docs) {
+                    if (d.data.parentLeaveId === parentLeaveId && d.data.startDate === todayStr) {
+                        alreadyContinuedToday = true;
+                        break;
+                    }
+                }
+
+                showContinuationUI(parentLeaveId, parentLeave, alreadyContinuedToday);
             }).catch(error => {
-                console.error('Error checking previous sick leave:', error);
+                console.error('Error checking previous leave:', error);
                 hideContinuationUI();
             });
         }
 
         // Show continuation UI
         function showContinuationUI(leaveId, leaveData, alreadyContinuedToday) {
-            // Show notice
-            document.getElementById('sickLeaveContinuationNotice').style.display = 'block';
-            
-            // Show or hide button based on whether already continued today
-            if (alreadyContinuedToday) {
-                document.getElementById('continueSickLeaveBtn').style.display = 'none';
-                document.getElementById('normalSubmitBtn').style.display = 'none';
-            } else {
-                document.getElementById('continueSickLeaveBtn').style.display = 'inline-block';
-                document.getElementById('normalSubmitBtn').style.display = 'none';
-            }
+            document.getElementById('leaveContinuationNotice').style.display = 'block';
+            document.getElementById('normalSubmitBtn').style.display = 'none';
             document.getElementById('continuationLeaveId').value = leaveId;
 
+            if (alreadyContinuedToday) {
+                document.getElementById('continueSickLeaveBtn').style.display = 'none';
+                document.getElementById('continuationEndDateSection').style.display = 'none';
+            } else {
+                document.getElementById('continueSickLeaveBtn').style.display = 'inline-block';
+                document.getElementById('continuationEndDateSection').style.display = 'block';
+                // Set minimum date to today (continuation starts today)
+                const endDatePicker = document.getElementById('continuationEndDate');
+                endDatePicker.min = today;
+                endDatePicker.value = today;
+            }
+
             // Show details
-            const startDate = new Date(leaveData.startDate).toLocaleDateString('th-TH', {
+            const startDateStr = new Date(leaveData.startDate).toLocaleDateString('th-TH', {
                 day: 'numeric', month: 'long', year: 'numeric'
             });
-            const endDate = new Date(leaveData.endDate).toLocaleDateString('th-TH', {
+            const endDateStr = new Date(leaveData.endDate).toLocaleDateString('th-TH', {
                 day: 'numeric', month: 'long', year: 'numeric'
             });
 
             let statusColor = leaveData.status === 'อนุมัติแล้ว' ? '#10b981' : '#f59e0b';
             let statusText = leaveData.status === 'อนุมัติแล้ว' ? '✓ อนุมัติแล้ว' : '○ รออนุมัติ';
-            
-            // Add message if already continued today
+
             let alreadyContinuedMessage = '';
             if (alreadyContinuedToday) {
                 alreadyContinuedMessage = `
                     <div style="background: #fee2e2; padding: 10px; border-radius: 8px; margin-top: 10px; color: #dc2626;">
-                        <strong><span class="fi fi-warning"></span> คุณได้ลาป่วยต่อไปแล้ววันนี้</strong>
-                        <div style="margin-top: 5px; font-size: 0.9rem;">
-                            สามารถลาต่อได้อีกครั้งในวันพรุ่งนี้
-                        </div>
+                        <strong><span class="fi fi-warning"></span> คุณได้ลาต่อเนื่องไปแล้ววันนี้</strong>
+                        <div style="margin-top: 5px; font-size: 0.9rem;">หากต้องการลาต่อ สามารถส่งใบลาใหม่ได้</div>
                     </div>
                 `;
             }
 
-            document.getElementById('previousSickLeaveDetails').innerHTML = `
+            document.getElementById('previousLeaveDetails').innerHTML = `
                 <div style="display: grid; gap: 8px;">
                     <div><strong>ประเภท:</strong> ${leaveData.type}</div>
-                    <div><strong>วันที่:</strong> ${startDate} - ${endDate} (${leaveData.days} วัน)</div>
+                    <div><strong>วันที่:</strong> ${startDateStr} - ${endDateStr} (${leaveData.days} วัน)</div>
                     <div><strong>เหตุผล:</strong> ${leaveData.reason}</div>
                     <div><strong>สถานะ:</strong> <span style="color: ${statusColor}; font-weight: 600;">${statusText}</span></div>
                 </div>
                 ${alreadyContinuedMessage}
             `;
 
-            // Lock and fill form
+            // Pre-fill reason and phone for reference (not locked)
             document.getElementById('reason').value = leaveData.reason;
             document.getElementById('contactPhone').value = leaveData.phone || '';
-            lockFormFields();
         }
 
         // Hide continuation UI
         function hideContinuationUI() {
-            document.getElementById('sickLeaveContinuationNotice').style.display = 'none';
+            document.getElementById('leaveContinuationNotice').style.display = 'none';
             document.getElementById('continueSickLeaveBtn').style.display = 'none';
             document.getElementById('normalSubmitBtn').style.display = 'inline-block';
             document.getElementById('continuationLeaveId').value = '';
-            unlockFormFields();
         }
 
-        // Lock form fields
-        function lockFormFields() {
-            document.getElementById('startDate').readOnly = true;
-            document.getElementById('endDate').readOnly = true;
-            document.getElementById('reason').readOnly = true;
-            document.getElementById('contactPhone').readOnly = true;
-        }
-
-        // Unlock form fields
-        function unlockFormFields() {
-            document.getElementById('startDate').readOnly = false;
-            document.getElementById('endDate').readOnly = false;
-            document.getElementById('reason').readOnly = false;
-            document.getElementById('contactPhone').readOnly = false;
-        }
-
-        // Continue sick leave
-        window.continueSickLeave = async function() {
-            const leaveId = document.getElementById('continuationLeaveId').value;
-            if (!leaveId) {
+        // Continue leave (any type) - creates a NEW Firestore document with parentLeaveId
+        window.continueLeave = async function() {
+            const parentLeaveId = document.getElementById('continuationLeaveId').value;
+            if (!parentLeaveId) {
                 alert('[!] ไม่พบข้อมูลใบลาเดิม');
                 return;
             }
 
+            const newEndDateStr = document.getElementById('continuationEndDate').value;
+            if (!newEndDateStr) {
+                alert('[!] กรุณาเลือกวันสุดท้ายของการลาต่อเนื่อง');
+                return;
+            }
+
+            if (newEndDateStr < today) {
+                alert('[!] วันสุดท้ายต้องไม่น้อยกว่าวันนี้');
+                return;
+            }
+
             try {
-                const leaveRef = doc(db, 'leaves', leaveId);
-                const leaveDoc = await getDoc(leaveRef);
-                
-                if (!leaveDoc.exists()) {
+                const parentRef = doc(db, 'leaves', parentLeaveId);
+                const parentDoc = await getDoc(parentRef);
+
+                if (!parentDoc.exists()) {
                     alert('[!] ไม่พบข้อมูลใบลาเดิม');
                     return;
                 }
-                
-                const oldLeaveData = leaveDoc.data();
 
-                // Check if already continued today
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const todayStr = today.toISOString().split('T')[0];
-                
-                const oldEndDate = new Date(oldLeaveData.endDate);
-                const oldEndDateStr = oldEndDate.toISOString().split('T')[0];
-                
-                // ถ้า endDate เดิมเป็นวันนี้แล้ว = แสดงว่าลาต่อไปแล้ววันนี้
-                if (oldEndDateStr === todayStr) {
-                    alert('[!] คุณได้ลาป่วยต่อไปแล้ววันนี้\n\nสามารถลาต่อได้อีกครั้งในวันพรุ่งนี้');
-                    return;
-                }
+                const parentData = parentDoc.data();
+                const newStartDateStr = today; // continuation starts today
 
-                if (!confirm('ยืนยันลาป่วยต่อ (วันนี้)?\n\n• ไม่นับเป็นครั้งใหม่\n• Admin ต้องอนุมัติใหม่')) {
-                    return;
-                }
-
-                // Calculate new end date (old endDate + 1 day)
-                oldEndDate.setDate(oldEndDate.getDate() + 1); // เพิ่ม 1 วัน
-                const newEndDateStr = oldEndDate.toISOString().split('T')[0];
-
-                // Calculate new total days (working days only)
-                const start = new Date(oldLeaveData.startDate);
-                const end = new Date(newEndDateStr);
+                // Calculate working days for new leave
+                const startD = new Date(newStartDateStr);
+                const endD = new Date(newEndDateStr);
                 let days = 0;
-                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    const dayOfWeek = d.getDay();
-                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                        days++;
-                    }
+                for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+                    const dow = d.getDay();
+                    if (dow !== 0 && dow !== 6) days++;
                 }
 
-                // Calculate previous approved days (if exists)
-                const previousDays = oldLeaveData.days || 0;
-                const continuationDays = days - previousDays; // วันที่เพิ่มในครั้งนี้
+                if (days <= 0) {
+                    alert('[!] ไม่มีวันทำงานในช่วงเวลาที่เลือก');
+                    return;
+                }
 
-                // Update leave request
-                await updateDoc(leaveRef, {
+                if (!confirm(`ยืนยันลาต่อเนื่อง?\n\n• ประเภท: ${parentData.type}\n• วันที่: ${newStartDateStr} - ${newEndDateStr}\n• จำนวน: ${days} วัน\n• อ้างอิงใบลาเดิม\n• Admin ต้องอนุมัติใหม่`)) {
+                    return;
+                }
+
+                const now = new Date().toISOString();
+                const newLeaveData = {
+                    userId: currentUserId,
+                    userName: parentData.userName,
+                    userPosition: parentData.userPosition || '',
+                    type: parentData.type,
+                    reason: parentData.reason,
+                    phone: parentData.phone || '',
+                    startDate: newStartDateStr,
                     endDate: newEndDateStr,
                     days: days,
                     status: 'รออนุมัติ',
+                    submittedDate: now,
+                    createdAt: now,
                     isContinuation: true,
-                    previousDays: previousDays,  // เก็บจำนวนวันเดิม
-                    continuationDays: continuationDays,  // เก็บจำนวนวันที่เพิ่ม
-                    continuedDate: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                });
+                    parentLeaveId: parentLeaveId,
+                };
 
-                alert(`[OK] ลาป่วยต่อเรียบร้อยแล้ว!\n\n• ลามาแล้ว: ${previousDays} วัน\n• ลาเพิ่ม: ${continuationDays} วัน\n• รวม: ${days} วัน\n\nรอผู้อำนวยการอนุมัติ`);
-                
-                // Reset and reload
+                await addDoc(collection(db, 'leaves'), newLeaveData);
+
+                alert(`[OK] ส่งใบลาต่อเนื่องเรียบร้อยแล้ว!\n\n• ประเภท: ${parentData.type}\n• วันที่: ${newStartDateStr} - ${newEndDateStr}\n• จำนวน: ${days} วัน\n\nรอผู้บริหารอนุมัติ`);
+
                 resetLeaveForm();
                 loadLeaveHistory();
-                
-                // Reload stats
                 loadLeaveStats();
-                
+
             } catch (error) {
-                console.error('Error continuing sick leave:', error);
+                console.error('Error creating continuation leave:', error);
                 alert('[!] เกิดข้อผิดพลาด: ' + error.message);
             }
         };
@@ -2171,7 +2157,10 @@
                         leaveCounts[leave.type] = 0;
                         leaveDays[leave.type] = 0;
                     }
-                    leaveCounts[leave.type]++;
+                    // ลาต่อเนื่องไม่นับจำนวนครั้ง นับแค่วันลา
+                    if (!leave.isContinuation) {
+                        leaveCounts[leave.type]++;
+                    }
                     leaveDays[leave.type] += leave.days || 0;
                 });
                 
@@ -2443,19 +2432,12 @@
 
                     const style = getLeaveTypeStyle(leave.type);
                     
-                    // Show continuation info if applicable
+                    // Show continuation badge if applicable
                     let continuationInfo = '';
-                    if (leave.isContinuation && leave.previousDays && leave.continuationDays) {
+                    if (leave.isContinuation) {
                         continuationInfo = `
-                            <div style="background: #fef3c7; padding: 10px; border-radius: 8px; margin-top: 8px;">
-                                <strong><span class="fi fi-chart"></span> รายละเอียดการลา:</strong>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px;">
-                                    <div>• ลามาแล้ว: <strong>${leave.previousDays}</strong> วัน (1 ครั้ง)</div>
-                                    <div>• ลาครั้งนี้: <strong>${leave.continuationDays}</strong> วัน (0 ครั้ง)</div>
-                                </div>
-                                <div style="margin-top: 5px; color: #d97706;">
-                                    <span class="fi fi-pin" style="width:1em;height:1em"></span> ลาต่อเนื่อง - รวม ${leave.days} วัน นับเป็น 1 ครั้ง
-                                </div>
+                            <div style="display: inline-flex; align-items: center; gap: 4px; background: #fef3c7; color: #d97706; border: 1px solid #f59e0b; border-radius: 12px; padding: 2px 10px; font-size: 0.82rem; font-weight: 600; margin-top: 6px;">
+                                🔗 ลาต่อเนื่อง
                             </div>
                         `;
                     }
@@ -2785,7 +2767,8 @@
                         console.log(`[Teacher] Leave: ${data.type}, days: ${data.days}, id: ${d.id}`);
 
                         if (stats[data.type]) {
-                            stats[data.type].times++;
+                            // ลาต่อเนื่องไม่นับครั้ง นับแค่วัน
+                            if (!data.isContinuation) stats[data.type].times++;
                             stats[data.type].days += (data.days || 0);
                         }
                         if (d.id !== leaveId) prevLeaveDocs3.push({id: d.id, ...data});
@@ -2816,21 +2799,21 @@
                     const s = stats[type];
                     const isCurrent = (type === leave.type);
                     
-                    // Calculate correctly
-                    const timesBefore = isCurrent ? Math.max(0, s.times - 1) : s.times;
+                    // ถ้าเป็นใบลาปกติ: ถูกนับใน s.times แล้ว → before = s.times-1
+                    // ถ้าเป็นลาต่อเนื่อง: ไม่ถูกนับใน s.times → before = s.times
+                    const timesBefore = (isCurrent && !leave.isContinuation) ? Math.max(0, s.times - 1) : s.times;
                     const daysBefore = isCurrent ? Math.max(0, s.days - leave.days) : s.days;
-                    const totalTimes = s.times;
-                    const totalDays = s.days;
-                    
-                    console.log(`[Teacher] ${type}: before=${timesBefore}/${daysBefore}, current=${isCurrent ? '1/' + leave.days : '-'}, total=${totalTimes}/${totalDays}`);
-                    
+                    const currentCount = (isCurrent && !leave.isContinuation) ? 1 : 0;
+
+                    console.log(`[Teacher] ${type}: before=${timesBefore}/${daysBefore}, current=${isCurrent ? currentCount + '/' + leave.days : '-'}, total=${s.times}/${s.days}`);
+
                     // Show only types with data
-                    if (s.times > 0) {
+                    if (s.times > 0 || (isCurrent && s.days > 0)) {
                         tableBody.push([
                             {text: type, fontSize: 9},
                             {text: `${timesBefore}/${daysBefore}`, fontSize: 9},
-                            {text: isCurrent ? `1/${leave.days}` : '-', fontSize: 9},
-                            {text: `${totalTimes}/${totalDays}`, fontSize: 9}
+                            {text: isCurrent ? `${currentCount}/${leave.days}` : '-', fontSize: 9},
+                            {text: `${s.times}/${s.days}`, fontSize: 9}
                         ]);
                     }
                 });
