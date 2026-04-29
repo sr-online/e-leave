@@ -2572,9 +2572,12 @@
                     {text: 'วันที่ ____________________________', fontSize: 10, alignment: 'center', margin: [0,0,0,8]},
                     {text: 'คำสั่ง', bold: true, fontSize: 10, decoration: 'underline', alignment: 'center', margin: [0,0,0,6]},
                     {columns: [
-                        {text: '☐  อนุญาต', fontSize: 10, width: 'auto'},
-                        {text: '☐  ไม่อนุญาต', fontSize: 10, width: 'auto'}
-                    ], columnGap: 20, margin: [10,0,0,4]},
+                        {width: 11, stack: [{canvas: [{type:'rect', x:0, y:2, w:9, h:9, lineWidth:0.8}]}]},
+                        {text: ' อนุญาต', fontSize: 10, width: 'auto'},
+                        {width: 20, text: ''},
+                        {width: 11, stack: [{canvas: [{type:'rect', x:0, y:2, w:9, h:9, lineWidth:0.8}]}]},
+                        {text: ' ไม่อนุญาต', fontSize: 10, width: 'auto'}
+                    ], margin: [10,0,0,4]},
                     {text: '(ลงชื่อ) ____________________________', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
                     {text: '(นายเทอดไทย  หอมสมบัติ)', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
                     {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
@@ -2718,9 +2721,12 @@
                     {text: `วันที่ ${formatThaiDate(approvedDate)}`, fontSize: 10, alignment: 'center', margin: [0,0,0,8]},
                     {text: 'คำสั่ง', bold: true, fontSize: 10, decoration: 'underline', alignment: 'center', margin: [0,0,0,6]},
                     {columns: [
-                        {text: '☑  อนุญาต', fontSize: 10, width: 'auto'},
-                        {text: '☐  ไม่อนุญาต', fontSize: 10, width: 'auto'}
-                    ], columnGap: 20, margin: [10,0,0,4]}
+                        {width: 11, stack: [{canvas: [{type:'rect', x:0, y:2, w:9, h:9, lineWidth:0.8}, {type:'line', x1:1.5, y1:7, x2:3.5, y2:10.5, lineWidth:1.8}, {type:'line', x1:3.5, y1:10.5, x2:9, y2:2.5, lineWidth:1.8}]}]},
+                        {text: ' อนุญาต', fontSize: 10, width: 'auto'},
+                        {width: 20, text: ''},
+                        {width: 11, stack: [{canvas: [{type:'rect', x:0, y:2, w:9, h:9, lineWidth:0.8}]}]},
+                        {text: ' ไม่อนุญาต', fontSize: 10, width: 'auto'}
+                    ], margin: [10,0,0,4]}
                 );
                 if (d1Img2) rightColStack2.push({image: d1Img2, width: 90, alignment: 'center', margin: [0,3,0,-10]});
                 rightColStack2.push(
