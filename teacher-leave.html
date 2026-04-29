@@ -423,6 +423,87 @@
             color: #92400e;
         }
 
+        /* Signature Feature */
+        .sig-section-box {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .sig-preview-img {
+            max-width: 200px;
+            max-height: 70px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+            padding: 4px;
+        }
+        .sig-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .sig-btn:hover { background: var(--primary-dark); }
+        .sig-btn-secondary {
+            background: #f1f5f9;
+            color: #64748b;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .sig-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 20000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .sig-modal-overlay.show { display: flex; }
+        .sig-modal {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            padding: 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .sig-modal h3 { margin: 0 0 4px; color: #1e293b; font-size: 1.2rem; }
+        .sig-modal p  { margin: 0 0 16px; color: #64748b; font-size: 0.9rem; }
+        #signatureCanvas {
+            width: 100%;
+            height: 180px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            cursor: crosshair;
+            touch-action: none;
+            background: white;
+            display: block;
+        }
+        .sig-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
         /* Edit Modal Styles */
         .edit-modal {
             display: none;
@@ -1240,6 +1321,7 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <script>
         // Configure Thai font for pdfMake
         if (typeof pdfMake !== 'undefined') {
@@ -1424,6 +1506,20 @@
                     <div class="form-group">
                         <label>เบอร์โทรศัพท์ที่สามารถติดต่อได้ <span class="required">*</span></label>
                         <input type="tel" id="contactPhone" placeholder="เช่น 081-234-5678" required pattern="[0-9-]+" maxlength="12">
+                    </div>
+
+                    <div class="form-group">
+                        <label>ลายเซ็นผู้ลา</label>
+                        <div class="sig-section-box" id="sigSectionBox">
+                            <div id="sigNoPreview" style="text-align:center;">
+                                <p style="margin:0 0 6px;color:#94a3b8;font-size:0.9rem;">ยังไม่มีลายเซ็น — ลายเซ็นจะปรากฏในใบลาอัตโนมัติ</p>
+                            </div>
+                            <div id="sigHasPreview" style="display:none;text-align:center;">
+                                <img id="sigPreviewImg" class="sig-preview-img" alt="ลายเซ็น">
+                                <p style="margin:4px 0 0;color:#10b981;font-size:0.85rem;">✓ มีลายเซ็นแล้ว</p>
+                            </div>
+                            <button type="button" id="sigOpenBtn" class="sig-btn" onclick="openSignatureModal()">✍️ เซ็นลายมือ</button>
+                        </div>
                     </div>
 
                     <input type="hidden" id="continuationLeaveId" value="">
@@ -1629,6 +1725,33 @@
         const currentUser = JSON.parse(currentUserData);
         const currentUserId = currentUser.id;
         const currentUserName = currentUser.name;
+
+        // Signature state
+        let userSignature = null;
+        let signaturePad = null;
+
+        // Load signature from Firestore
+        async function loadUserSignature() {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', currentUserId));
+                if (userDoc.exists() && userDoc.data().signature) {
+                    userSignature = userDoc.data().signature;
+                    updateSignaturePreview();
+                }
+            } catch(e) {
+                console.error('Load signature error:', e);
+            }
+        }
+        loadUserSignature();
+
+        function updateSignaturePreview() {
+            if (userSignature) {
+                document.getElementById('sigNoPreview').style.display = 'none';
+                document.getElementById('sigHasPreview').style.display = 'block';
+                document.getElementById('sigPreviewImg').src = userSignature;
+                document.getElementById('sigOpenBtn').textContent = '✍️ เซ็นใหม่';
+            }
+        }
 
         // Update user display
         document.getElementById('userName').textContent = currentUser.name;
@@ -1882,6 +2005,14 @@
 
         // Continue leave (any type) - creates a NEW Firestore document with parentLeaveId
         window.continueLeave = async function() {
+            if (!userSignature) {
+                alert('[!] กรุณาเซ็นลายมือก่อนส่งใบลา\nกดปุ่ม ✍️ เซ็นลายมือ ในช่องลายเซ็นด้านบน');
+                document.getElementById('sigSectionBox').scrollIntoView({behavior: 'smooth', block: 'center'});
+                document.getElementById('sigSectionBox').style.borderColor = '#ef4444';
+                setTimeout(() => { document.getElementById('sigSectionBox').style.borderColor = ''; }, 3000);
+                return;
+            }
+
             const parentLeaveId = document.getElementById('continuationLeaveId').value;
             if (!parentLeaveId) {
                 alert('[!] ไม่พบข้อมูลใบลาเดิม');
@@ -1969,11 +2100,19 @@
         // Leave form submission
         document.getElementById('leaveForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
+            if (!userSignature) {
+                alert('[!] กรุณาเซ็นลายมือก่อนส่งใบลา\nกดปุ่ม ✍️ เซ็นลายมือ ในช่องลายเซ็นด้านบน');
+                document.getElementById('sigSectionBox').scrollIntoView({behavior: 'smooth', block: 'center'});
+                document.getElementById('sigSectionBox').style.borderColor = '#ef4444';
+                setTimeout(() => { document.getElementById('sigSectionBox').style.borderColor = ''; }, 3000);
+                return;
+            }
+
             const leaveType = document.getElementById('leaveType').value;
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
-            
+
             // Validation for sick leave
             if (leaveType === 'ลาป่วย') {
                 const now = new Date();
@@ -2697,6 +2836,57 @@
         // PDF GENERATION FUNCTIONS
         // ============================================
 
+        // Signature modal functions
+        window.openSignatureModal = function() {
+            document.getElementById('sigModalOverlay').classList.add('show');
+            setTimeout(() => {
+                const canvas = document.getElementById('signatureCanvas');
+                canvas.width = canvas.offsetWidth;
+                canvas.height = 180;
+                if (signaturePad) signaturePad.off();
+                signaturePad = new SignaturePad(canvas, {
+                    backgroundColor: 'rgba(255,255,255,1)',
+                    penColor: 'rgb(0,0,0)',
+                    minWidth: 1,
+                    maxWidth: 2.5
+                });
+                if (userSignature) {
+                    signaturePad.fromDataURL(userSignature, {ratio: 1});
+                }
+            }, 50);
+        };
+
+        window.clearSignaturePad = function() {
+            if (signaturePad) signaturePad.clear();
+        };
+
+        window.cancelSignatureModal = function() {
+            document.getElementById('sigModalOverlay').classList.remove('show');
+        };
+
+        window.saveSignature = async function() {
+            if (!signaturePad || signaturePad.isEmpty()) {
+                alert('กรุณาวาดลายเซ็นก่อน');
+                return;
+            }
+            const btn = document.querySelector('#sigModalOverlay .sig-btn');
+            btn.textContent = 'กำลังบันทึก...';
+            btn.disabled = true;
+            try {
+                const sigData = signaturePad.toDataURL('image/png');
+                await updateDoc(doc(db, 'users', currentUserId), { signature: sigData });
+                userSignature = sigData;
+                updateSignaturePreview();
+                document.getElementById('sigModalOverlay').classList.remove('show');
+            } catch(e) {
+                console.error('Save signature error:', e);
+                alert('เกิดข้อผิดพลาดในการบันทึกลายเซ็น: ' + e.message);
+            } finally {
+                btn.textContent = '💾 บันทึกลายเซ็น';
+                btn.disabled = false;
+            }
+        };
+
         // Helper: Load image as base64 for PDF
         async function loadImageAsBase64(url) {
             try {
@@ -2818,6 +3008,45 @@
                     }
                 });
                 
+                // Build left column stack (สถิติ + ผู้ตรวจสอบ)
+                const leftColStack = [
+                    {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 10, margin: [0,0,0,3]},
+                    {table: {headerRows: 1, widths: ['*', 45, 45, 45], body: tableBody}, layout: {hLineWidth: () => 0.5, vLineWidth: () => 0.5}, margin: [0,0,10,8]},
+                ];
+                if (d3Img3) leftColStack.push({image: d3Img3, width: 90, alignment: 'center', margin: [0,3,0,-10]});
+                leftColStack.push(
+                    {text: '(ลงชื่อ)................................ผู้ตรวจสอบ', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: '(นางสาวเอื้ออารี เอกพันธ์)', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: `วันที่ ${formatThaiDate(approvedDate)}`, fontSize: 10, alignment: 'center'}
+                );
+
+                // Build right column stack (ความเห็นผู้บังคับบัญชา + คำสั่ง)
+                const rightColStack = [
+                    {text: 'ความเห็นผู้บังคับบัญชา', bold: true, fontSize: 10, decoration: 'underline', alignment: 'center', margin: [0,0,0,4]},
+                    {text: 'เสนอผู้อำนวยการเพื่อพิจารณาอนุญาต', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: '..................................................................', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                ];
+                if (d2Img3) rightColStack.push({image: d2Img3, width: 90, alignment: 'center', margin: [0,3,0,-10]});
+                rightColStack.push(
+                    {text: '(ลงชื่อ) ____________________________', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: '(นายพงษ์พันธ์ ติยะบุตร)', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: `วันที่ ${formatThaiDate(approvedDate)}`, fontSize: 10, alignment: 'center', margin: [0,0,0,8]},
+                    {text: 'คำสั่ง', bold: true, fontSize: 10, decoration: 'underline', alignment: 'center', margin: [0,0,0,6]},
+                    {columns: [
+                        {text: '☑  อนุญาต', fontSize: 10, width: 'auto'},
+                        {text: '☐  ไม่อนุญาต', fontSize: 10, width: 'auto'}
+                    ], columnGap: 20, margin: [10,0,0,4]}
+                );
+                if (d1Img3) rightColStack.push({image: d1Img3, width: 90, alignment: 'center', margin: [0,3,0,-10]});
+                rightColStack.push(
+                    {text: '(ลงชื่อ) ____________________________', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: '(นายเทอดไทย  หอมสมบัติ)', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', fontSize: 10, alignment: 'center', margin: [0,0,0,2]},
+                    {text: `วันที่ ${formatThaiDate(approvedDate)}`, fontSize: 10, alignment: 'center'}
+                );
+
                 const docDefinition = {
                     pageSize: 'A4',
                     pageMargins: [35, 22, 35, 22],
@@ -2833,29 +3062,14 @@
                         {text: [{text: 'ตั้งแต่วันที่ ', fontSize: 11}, {text: formatThaiDate(leave.startDate), bold: true, fontSize: 11}, {text: ' ถึงวันที่ ', fontSize: 11}, {text: formatThaiDate(leave.endDate), bold: true, fontSize: 11}, {text: ' รวม ', fontSize: 11}, {text: `${leave.days}`, bold: true, fontSize: 11}, {text: ' วัน', fontSize: 11}], margin: [0,0,0,4]},
                         ...(lastLeaveData3 ? [{text: [{text: 'ข้าพเจ้าได้ลา ', fontSize: 11}, {text: lastLeaveData3.type, bold: true, fontSize: 11}, {text: ' ครั้งสุดท้ายตั้งแต่วันที่ ', fontSize: 11}, {text: formatThaiDate(lastLeaveData3.startDate), bold: true, fontSize: 11}, {text: ' ถึงวันที่ ', fontSize: 11}, {text: formatThaiDate(lastLeaveData3.endDate), bold: true, fontSize: 11}, {text: ' มีกำหนด ', fontSize: 11}, {text: `${lastLeaveData3.days}`, bold: true, fontSize: 11}, {text: ' วัน', fontSize: 11}], margin: [0,0,0,4]}] : []),
                         {text: `ในระหว่างลาจะติดต่อกับข้าพเจ้าได้ที่ ${leave.phone || '-'}`, fontSize: 11, margin: [0,0,0,8]},
-                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 11, margin: [0,0,0,10]},
-                        {text: `(ลงชื่อ) ${leave.userName}`, alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 11, margin: [0,0,0,6]},
-                        {text: 'สถิติการลาในปีงบประมาณนี้', bold: true, fontSize: 10, margin: [0,0,0,3]},
-                        {table: {headerRows: 1, widths: ['*', 60, 60, 60], body: tableBody}, layout: {hLineWidth: () => 0.5, vLineWidth: () => 0.5}, margin: [0,0,0,6]},
-                        ...(d3Img3 ? [{image: d3Img3, width: 100, alignment: 'center', margin: [0,3,0,-10]}] : []),
-                        {text: '(ลงชื่อ) ____________________________  ผู้ตรวจสอบ', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: '(นางสาวเอื้ออารี เอกพันธ์)', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 11, margin: [0,0,0,6]},
-                        {text: 'เสนอผู้อำนวยการเพื่อพิจารณาอนุญาต', fontSize: 11, margin: [0,0,0,3]},
-                        ...(d2Img3 ? [{image: d2Img3, width: 100, alignment: 'center', margin: [0,3,0,-10]}] : []),
+                        {text: 'ขอแสดงความนับถือ', alignment: 'center', fontSize: 11, margin: [0,0,0,8]},
+                        ...(userSignature ? [{image: userSignature, width: 120, alignment: 'center', margin: [0,0,0,-10]}] : []),
                         {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: '(นายอภิรักขภูมิ ยันตะบุศย์)', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: 'ตำแหน่ง รองผู้อำนวยการสถานศึกษา', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 11, margin: [0,0,0,6]},
-                        {text: 'คำสั่ง', alignment: 'center', bold: true, fontSize: 11, margin: [0,0,0,4]},
-                        {text: 'อนุมัติให้ลาตามที่ขอ', alignment: 'center', fontSize: 11, margin: [0,0,0,6]},
-                        ...(d1Img3 ? [{image: d1Img3, width: 100, alignment: 'center', margin: [0,3,0,-10]}] : []),
-                        {text: '(ลงชื่อ) ____________________________', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: '(นายเทอดไทย  หอมสมบัติ)', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: 'ตำแหน่งผู้อำนวยการโรงเรียนสหราษฎร์รังสฤษดิ์', alignment: 'center', fontSize: 11, margin: [0,0,0,2]},
-                        {text: `วันที่ ${formatThaiDate(approvedDate)}`, alignment: 'center', fontSize: 11, margin: [0,0,0,0]}
+                        {text: `(${leave.userName})`, alignment: 'center', fontSize: 11, margin: [0,0,0,10]},
+                        {columns: [
+                            {width: '50%', stack: leftColStack},
+                            {width: '50%', stack: rightColStack}
+                        ]}
                     ]
                 };
 
@@ -3139,6 +3353,20 @@
                 <button type="button" class="btn" style="background: #2563eb; color: white;" onclick="updateLeave()">
                     💾 บันทึกการแก้ไข
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signature Modal -->
+    <div class="sig-modal-overlay" id="sigModalOverlay">
+        <div class="sig-modal">
+            <h3>✍️ วาดลายเซ็น</h3>
+            <p>ใช้นิ้วหรือเมาส์วาดลายเซ็น — บันทึกครั้งเดียวใช้ได้ทุกใบลา</p>
+            <canvas id="signatureCanvas"></canvas>
+            <div class="sig-modal-actions">
+                <button type="button" class="sig-btn-secondary" onclick="clearSignaturePad()">ล้าง</button>
+                <button type="button" class="sig-btn-secondary" onclick="cancelSignatureModal()">ยกเลิก</button>
+                <button type="button" class="sig-btn" onclick="saveSignature()">💾 บันทึกลายเซ็น</button>
             </div>
         </div>
     </div>
