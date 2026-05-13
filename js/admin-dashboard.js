@@ -2556,7 +2556,7 @@
                 if (d3Img) leftColStack1.push({image: d3Img, width: 90, alignment: 'center', margin: [0,3,0,-10]});
                 leftColStack1.push(
                     {text: '(ลงชื่อ)................................ผู้ตรวจสอบ', fontSize: 11, alignment: 'center', margin: [0,14,0,4]},
-                    {text: '(นางสาวเอื้ออารี เอกพันธ์)', fontSize: 11, alignment: 'center', margin: [0,0,0,4]},
+                    {text: '(นางสาววิภารัตน์ สุธรรม)', fontSize: 11, alignment: 'center', margin: [0,0,0,4]},
                     {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', fontSize: 11, alignment: 'center', margin: [0,0,0,4]},
                     {text: `วันที่ ${formatThaiDate(new Date())}`, fontSize: 11, alignment: 'center'}
                 );
@@ -2702,7 +2702,7 @@
                 if (d3Img2) leftColStack2.push({image: d3Img2, width: 90, alignment: 'center', margin: [0,3,0,-10]});
                 leftColStack2.push(
                     {text: '(ลงชื่อ)................................ผู้ตรวจสอบ', fontSize: 11, alignment: 'center', margin: [0,14,0,4]},
-                    {text: '(นางสาวเอื้ออารี เอกพันธ์)', fontSize: 11, alignment: 'center', margin: [0,0,0,4]},
+                    {text: '(นางสาววิภารัตน์ สุธรรม)', fontSize: 11, alignment: 'center', margin: [0,0,0,4]},
                     {text: 'ตำแหน่ง เจ้าหน้าที่กลุ่มบริหารงานบุคคล', fontSize: 11, alignment: 'center', margin: [0,0,0,4]},
                     {text: `วันที่ ${formatThaiDate(approvedDate)}`, fontSize: 11, alignment: 'center'}
                 );
