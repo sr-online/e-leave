@@ -1822,7 +1822,8 @@
         };
 
         // Set today's date for late arrival
-        const today = new Date().toISOString().split('T')[0];
+        // ใช้ timezone ของไทย (UTC+7) เพื่อให้ได้วันที่ถูกต้องก่อน 07:00 น.
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
         document.getElementById('lateDate').value = today;
 
         // Set minimum dates
@@ -1864,8 +1865,8 @@
                 }
             } else if (leaveType === 'ลากิจส่วนตัว') {
                 // ลากิจ: must be at least 3 days in advance
-                const minDate = new Date();
-                minDate.setDate(minDate.getDate() + 3);
+                const minDate = new Date(today); // today ใช้ Bangkok timezone แล้ว
+                minDate.setUTCDate(minDate.getUTCDate() + 3);
                 const minDateStr = minDate.toISOString().split('T')[0];
 
                 startDateInput.min = minDateStr;
@@ -1889,8 +1890,8 @@
                 return;
             }
 
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterday = new Date(today); // today ใช้ Bangkok timezone แล้ว
+            yesterday.setUTCDate(yesterday.getUTCDate() - 1);
             const yesterdayStr = yesterday.toISOString().split('T')[0];
 
             const todayStr = today; // reuse outer-scope today string
