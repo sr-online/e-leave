@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="theme-color" content="#2563eb">
     <title>ระบบการลาและไปราชการ - ข้าราชการครู</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="img/icon-180.png">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -1317,6 +1319,7 @@
         .fi-check { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/%3E%3Cpath d='M22 4L12 14.01l-3-3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 11.08V12a10 10 0 1 1-5.93-9.14'/%3E%3Cpath d='M22 4L12 14.01l-3-3'/%3E%3C/svg%3E"); }
         .fi-x { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M15 9l-6 6M9 9l6 6'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M15 9l-6 6M9 9l6 6'/%3E%3C/svg%3E"); }
         .fi-history { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M3.05 13A9 9 0 1 0 6 5.3L3 8'/%3E%3Cpath d='M12 7v5l4 2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M3.05 13A9 9 0 1 0 6 5.3L3 8'/%3E%3Cpath d='M12 7v5l4 2'/%3E%3C/svg%3E"); }
+        .fi-download { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E"); }
 
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
@@ -1401,6 +1404,10 @@
                 <span class="nav-icon"><span class="fi fi-car"></span></span>
                 <span>แจ้งไปราชการ</span>
             </div>
+            <div class="nav-item" onclick="alert('⚠️ ฟังก์ชันนี้กำลังพัฒนา กรุณารอติดตามในเร็วๆ นี้')">
+                <span class="nav-icon"><span class="fi fi-chart"></span></span>
+                <span>รายงานไปราชการ</span>
+            </div>
             <div class="nav-item" onclick="showSection('late-arrival')">
                 <span class="nav-icon"><span class="fi fi-clock"></span></span>
                 <span>แจ้งเข้าสายฉุกเฉิน</span>
@@ -1408,6 +1415,10 @@
             <div class="nav-item" onclick="showContactPopup()">
                 <span class="nav-icon"><span class="fi fi-phone"></span></span>
                 <span>ติดต่อเจ้าหน้าที่</span>
+            </div>
+            <div class="nav-item" id="pwaInstallNavItem" onclick="installPWA()" style="display:none;">
+                <span class="nav-icon"><span class="fi fi-download"></span></span>
+                <span>ติดตั้งแอพ</span>
             </div>
         </div>
 
@@ -1818,6 +1829,52 @@
             if (confirm('ต้องการออกจากระบบใช่หรือไม่?')) {
                 sessionStorage.removeItem('currentUser');
                 window.location.href = 'index.html';
+            }
+        };
+
+        // ===== PWA Install =====
+        let deferredInstallPrompt = null;
+        const pwaInstallNavItem = document.getElementById('pwaInstallNavItem');
+        const isIOSDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+        function isRunningStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
+        }
+
+        if (!isRunningStandalone() && isIOSDevice && pwaInstallNavItem) {
+            // iOS has no beforeinstallprompt event; show the button so users can see the manual steps
+            pwaInstallNavItem.style.display = 'flex';
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            if (pwaInstallNavItem && !isRunningStandalone()) {
+                pwaInstallNavItem.style.display = 'flex';
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            if (pwaInstallNavItem) pwaInstallNavItem.style.display = 'none';
+        });
+
+        window.installPWA = async function() {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                const { outcome } = await deferredInstallPrompt.userChoice;
+                deferredInstallPrompt = null;
+                if (outcome === 'accepted' && pwaInstallNavItem) {
+                    pwaInstallNavItem.style.display = 'none';
+                }
+            } else if (isIOSDevice) {
+                alert('วิธีติดตั้งแอพบน iPhone/iPad:\n\n1. แตะปุ่ม "แชร์" (Share) ด้านล่างของ Safari\n2. เลือก "เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)\n3. แตะ "เพิ่ม"');
+            } else {
+                alert('ไม่สามารถติดตั้งแอพได้ในขณะนี้ เบราว์เซอร์นี้อาจไม่รองรับ หรือแอพถูกติดตั้งไปแล้ว');
             }
         };
 

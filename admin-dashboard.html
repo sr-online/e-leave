@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบจัดการการลา - Admin Dashboard</title>
+    <meta name="theme-color" content="#1e40af">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="img/icon-180.png">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/admin-dashboard.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -78,9 +81,17 @@
                 <span class="nav-icon">📈</span>
                 <span>รายงานสรุป</span>
             </div>
+            <div class="nav-item" onclick="alert('⚠️ ฟังก์ชันนี้กำลังพัฒนา กรุณารอติดตามในเร็วๆ นี้')">
+                <span class="nav-icon">🧳</span>
+                <span>รายงานไปราชการ</span>
+            </div>
             <div class="nav-item" onclick="switchTab('settings', this)">
                 <span class="nav-icon">⚙️</span>
                 <span>ตั้งค่า</span>
+            </div>
+            <div class="nav-item" id="pwaInstallNavItem" onclick="installPWA()" style="display:none;">
+                <span class="nav-icon">📲</span>
+                <span>ติดตั้งแอพ</span>
             </div>
         </nav>
     </div>
@@ -1100,6 +1111,52 @@
         // Function to open calendar view
         function openCalendarView() {
             window.open('calendar-view.html', '_blank');
+        }
+
+        // ===== PWA Install =====
+        let deferredInstallPrompt = null;
+        const pwaInstallNavItem = document.getElementById('pwaInstallNavItem');
+        const isIOSDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+        function isRunningStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
+        }
+
+        if (!isRunningStandalone() && isIOSDevice && pwaInstallNavItem) {
+            // iOS has no beforeinstallprompt event; show the button so users can see the manual steps
+            pwaInstallNavItem.style.display = 'flex';
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            if (pwaInstallNavItem && !isRunningStandalone()) {
+                pwaInstallNavItem.style.display = 'flex';
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            if (pwaInstallNavItem) pwaInstallNavItem.style.display = 'none';
+        });
+
+        async function installPWA() {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                const { outcome } = await deferredInstallPrompt.userChoice;
+                deferredInstallPrompt = null;
+                if (outcome === 'accepted' && pwaInstallNavItem) {
+                    pwaInstallNavItem.style.display = 'none';
+                }
+            } else if (isIOSDevice) {
+                alert('วิธีติดตั้งแอพบน iPhone/iPad:\n\n1. แตะปุ่ม "แชร์" (Share) ด้านล่างของ Safari\n2. เลือก "เพิ่มไปยังหน้าจอโฮม" (Add to Home Screen)\n3. แตะ "เพิ่ม"');
+            } else {
+                alert('ไม่สามารถติดตั้งแอพได้ในขณะนี้ เบราว์เซอร์นี้อาจไม่รองรับ หรือแอพถูกติดตั้งไปแล้ว');
+            }
         }
     </script>
 </body>

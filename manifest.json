@@ -1,0 +1,38 @@
+{
+  "name": "ระบบการลาอิเล็กทรอนิกส์ โรงเรียนสหราษฎร์รังสฤษดิ์",
+  "short_name": "E-Leave",
+  "description": "ระบบการลา แจ้งไปราชการ และแจ้งเข้าสายอิเล็กทรอนิกส์ โรงเรียนสหราษฎร์รังสฤษดิ์",
+  "start_url": "index.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#1e40af",
+  "lang": "th",
+  "icons": [
+    {
+      "src": "img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
