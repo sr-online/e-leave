@@ -1895,6 +1895,7 @@
         window.handleLeaveTypeChange = function() {
             const leaveType = document.getElementById('leaveType').value;
             const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
             const alertDiv = document.getElementById('leaveAlert');
 
             // Always hide continuation UI first, then check async
@@ -1906,13 +1907,18 @@
             }
 
             if (leaveType === 'ลาป่วย') {
-                // ลาป่วย: can only select today, must be before 8:00 AM
+                // ลาป่วย: only the day you're actually sick - no advance dating,
+                // so start and end are both locked to today (extend via "ลาต่อเนื่อง" instead)
                 const now = new Date();
                 const currentHour = now.getHours();
 
                 startDateInput.min = today;
                 startDateInput.max = today;
                 startDateInput.value = today;
+
+                endDateInput.min = today;
+                endDateInput.max = today;
+                endDateInput.value = today;
 
                 if (currentHour >= 8) {
                     alertDiv.innerHTML = '<strong><span class="fi fi-warning"></span> คำเตือน:</strong> การลาป่วยต้องแจ้งภายในเวลา 08:00 น. ของวันที่ลา, กรุณาติดต่อเจ้าหน้าที่โดยตรง';
@@ -1930,11 +1936,17 @@
                 startDateInput.max = '';
                 startDateInput.value = '';
 
+                endDateInput.min = minDateStr;
+                endDateInput.max = '';
+                endDateInput.value = '';
+
                 alertDiv.innerHTML = '<strong><span class="fi fi-pin"></span> หมายเหตุ:</strong> การลากิจส่วนตัวต้องแจ้งล่วงหน้าอย่างน้อย 3 วัน';
                 alertDiv.style.display = 'block';
             } else {
                 startDateInput.min = today;
                 startDateInput.max = '';
+                endDateInput.min = today;
+                endDateInput.max = '';
                 alertDiv.style.display = 'none';
             }
         };
@@ -2015,6 +2027,9 @@
                 const endDatePicker = document.getElementById('continuationEndDate');
                 endDatePicker.min = today;
                 endDatePicker.value = today;
+                // ลาป่วย: no advance dating even when continuing - lock to today only,
+                // extend again tomorrow if still sick
+                endDatePicker.max = leaveData.type === 'ลาป่วย' ? today : '';
             }
 
             // Show details
@@ -2100,6 +2115,11 @@
                 const parentData = parentDoc.data();
                 const newStartDateStr = today; // continuation starts today
 
+                if (parentData.type === 'ลาป่วย' && newEndDateStr !== today) {
+                    alert('[!] การลาป่วยลาได้เฉพาะวันที่ป่วยจริงเท่านั้น ไม่สามารถลาล่วงหน้าหลายวันได้');
+                    return;
+                }
+
                 // Calculate working days for new leave
                 const startD = new Date(newStartDateStr);
                 const endD = new Date(newEndDateStr);
@@ -2182,7 +2202,12 @@
                     alert('[!] การลาป่วยสามารถเลือกได้เฉพาะวันปัจจุบันเท่านั้น');
                     return;
                 }
-                
+
+                if (endDate !== startDate) {
+                    alert('[!] การลาป่วยลาได้เฉพาะวันที่ป่วยจริงเท่านั้น ไม่สามารถลาล่วงหน้าหลายวันได้\nหากยังป่วยต่อในวันถัดไป ให้ยื่น "ลาต่อเนื่อง" ในวันนั้น');
+                    return;
+                }
+
                 if (currentHour >= 8) {
                     alert('[!] การลาป่วยต้องแจ้งก่อนเวลา 08:00 น. ของวันที่ลา');
                     return;
