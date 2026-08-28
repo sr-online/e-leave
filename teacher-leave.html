@@ -23,6 +23,8 @@
         :root {
             --primary: #2563eb;
             --primary-dark: #1e40af;
+            --accent: #06b6d4;
+            --purple: #8b5cf6;
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
@@ -169,6 +171,10 @@
             display: none;
         }
 
+        .bottom-nav {
+            display: none;
+        }
+
         .content-section {
             display: none;
         }
@@ -190,6 +196,110 @@
 
         .page-subtitle {
             color: var(--text-light);
+        }
+
+        /* Welcome Card */
+        .welcome-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 28px 32px;
+            margin-bottom: 25px;
+            border-radius: 20px;
+            overflow: hidden;
+            color: white;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 55%, var(--accent) 100%);
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.3);
+        }
+
+        .welcome-card::before,
+        .welcome-card::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            pointer-events: none;
+        }
+
+        .welcome-card::before {
+            width: 180px;
+            height: 180px;
+            top: -80px;
+            right: -40px;
+        }
+
+        .welcome-card::after {
+            width: 110px;
+            height: 110px;
+            bottom: -50px;
+            right: 90px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .welcome-card-text {
+            position: relative;
+            z-index: 1;
+        }
+
+        .welcome-greeting {
+            font-size: 1rem;
+            font-weight: 500;
+            opacity: 0.95;
+            margin-bottom: 6px;
+        }
+
+        .welcome-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .welcome-date {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .welcome-card-icon {
+            position: relative;
+            z-index: 1;
+            width: 64px;
+            height: 64px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .welcome-card-icon .fi {
+            width: 30px;
+            height: 30px;
+            background-color: white;
+        }
+
+        @media (max-width: 480px) {
+            .welcome-card {
+                padding: 22px 20px;
+                border-radius: 16px;
+            }
+
+            .welcome-name {
+                font-size: 1.25rem;
+            }
+
+            .welcome-card-icon {
+                width: 48px;
+                height: 48px;
+                border-radius: 14px;
+            }
+
+            .welcome-card-icon .fi {
+                width: 24px;
+                height: 24px;
+            }
         }
 
         /* Stats Grid */
@@ -621,9 +731,13 @@
                 display: flex;
                 align-items: center;
                 gap: 12px;
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
             }
 
-            .mobile-menu-btn {
+            /* Hamburger toggle - moved to the top-right corner */
+            .mobile-menu-toggle {
                 display: flex !important;
                 flex-direction: column;
                 justify-content: center;
@@ -637,13 +751,14 @@
                 border-radius: 10px;
                 transition: all 0.2s ease;
                 box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+                flex-shrink: 0;
             }
 
-            .mobile-menu-btn:hover {
+            .mobile-menu-toggle:hover {
                 background: var(--primary-dark);
             }
 
-            .mobile-menu-btn span {
+            .mobile-menu-toggle span {
                 display: block;
                 width: 22px;
                 height: 2.5px;
@@ -652,19 +767,19 @@
                 transition: all 0.3s ease;
             }
 
-            .mobile-menu-btn span:not(:last-child) {
+            .mobile-menu-toggle span:not(:last-child) {
                 margin-bottom: 4px;
             }
 
-            .mobile-menu-btn.active span:nth-child(1) {
+            .mobile-menu-toggle.active span:nth-child(1) {
                 transform: translateY(6.5px) rotate(45deg);
             }
 
-            .mobile-menu-btn.active span:nth-child(2) {
+            .mobile-menu-toggle.active span:nth-child(2) {
                 opacity: 0;
             }
 
-            .mobile-menu-btn.active span:nth-child(3) {
+            .mobile-menu-toggle.active span:nth-child(3) {
                 transform: translateY(-6.5px) rotate(-45deg);
             }
 
@@ -683,26 +798,60 @@
                 font-size: 1.1rem;
                 font-weight: 600;
                 color: var(--text);
-            }
-
-            .mobile-user-btn {
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                background: var(--primary);
-                color: white;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 600;
-                font-size: 1rem;
-                border: 2px solid white;
-                box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             /* Hide horizontal nav */
             .mobile-nav {
                 display: none !important;
+            }
+
+            /* Bottom Navigation Bar */
+            .bottom-nav {
+                display: flex;
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 1002;
+                background: var(--surface);
+                border-top: 1px solid var(--border);
+                box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+                padding-bottom: env(safe-area-inset-bottom, 0);
+            }
+
+            .bottom-nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                padding: 8px 4px 10px;
+                color: var(--text-light);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .bottom-nav-item .fi {
+                width: 22px;
+                height: 22px;
+                transition: transform 0.2s ease;
+            }
+
+            .bottom-nav-label {
+                font-size: 0.7rem;
+                font-weight: 500;
+            }
+
+            .bottom-nav-item.active {
+                color: var(--primary);
+            }
+
+            .bottom-nav-item.active .fi {
+                transform: translateY(-2px);
             }
 
             .sidebar {
@@ -739,7 +888,7 @@
             }
 
             .content-wrapper {
-                padding-bottom: 20px;
+                padding-bottom: 90px;
             }
 
             .footer {
@@ -860,34 +1009,6 @@
 
             .stat-value {
                 font-size: 1.75rem;
-            }
-        }
-
-        .mobile-menu-btn {
-            display: none;
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 56px;
-            height: 56px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 1.5rem;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
-            z-index: 999;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .mobile-menu-btn:active {
-            transform: scale(0.9);
-        }
-
-        @media (max-width: 768px) {
-            .mobile-menu-btn {
-                display: flex !important;
             }
         }
 
@@ -1320,6 +1441,8 @@
         .fi-x { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M15 9l-6 6M9 9l6 6'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M15 9l-6 6M9 9l6 6'/%3E%3C/svg%3E"); }
         .fi-history { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M3.05 13A9 9 0 1 0 6 5.3L3 8'/%3E%3Cpath d='M12 7v5l4 2'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M3.05 13A9 9 0 1 0 6 5.3L3 8'/%3E%3Cpath d='M12 7v5l4 2'/%3E%3C/svg%3E"); }
         .fi-download { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='7 10 12 15 17 10'/%3E%3Cline x1='12' y1='15' x2='12' y2='3'/%3E%3C/svg%3E"); }
+        .fi-menu { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='5' cy='12' r='1.5'/%3E%3Ccircle cx='12' cy='12' r='1.5'/%3E%3Ccircle cx='19' cy='12' r='1.5'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='5' cy='12' r='1.5'/%3E%3Ccircle cx='12' cy='12' r='1.5'/%3E%3Ccircle cx='19' cy='12' r='1.5'/%3E%3C/svg%3E"); }
+        .fi-wave { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11.5V6a2 2 0 0 0-4 0v4M14 6.5V4a2 2 0 0 0-4 0v6M10 6a2 2 0 0 0-4 0v9'/%3E%3Cpath d='M18 11a2 2 0 0 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-6-2.4l-3.4-4.4a1.7 1.7 0 0 1 2.4-2.4L7 15'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11.5V6a2 2 0 0 0-4 0v4M14 6.5V4a2 2 0 0 0-4 0v6M10 6a2 2 0 0 0-4 0v9'/%3E%3Cpath d='M18 11a2 2 0 0 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-6-2.4l-3.4-4.4a1.7 1.7 0 0 1 2.4-2.4L7 15'/%3E%3C/svg%3E"); }
 
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
@@ -1361,15 +1484,14 @@
     <!-- Mobile Header -->
     <div class="mobile-header">
         <div class="mobile-header-left">
-            <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar(); toggleMenuIcon()">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
             <div class="mobile-logo"><span class="fi fi-clipboard" style="width:1.5em;height:1.5em;background-color:#fff"></span></div>
             <div class="mobile-header-title">ยินดีต้อนรับเข้าสู่ระบบ</div>
         </div>
-        <div class="mobile-user-btn" id="mobileUserBtn"></div>
+        <button class="mobile-menu-toggle" id="mobileMenuBtn" onclick="toggleSidebar(); toggleMenuIcon()" aria-label="เปิดเมนู">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </div>
 
     <!-- Sidebar -->
@@ -1388,19 +1510,19 @@
         </div>
 
         <div class="nav-menu">
-            <div class="nav-item active" onclick="showSection('dashboard')">
+            <div class="nav-item active" data-section="dashboard" onclick="showSection('dashboard')">
                 <span class="nav-icon"><span class="fi fi-home"></span></span>
                 <span>หน้าแรก</span>
             </div>
-            <div class="nav-item" onclick="showSection('leave')">
+            <div class="nav-item" data-section="leave" onclick="showSection('leave')">
                 <span class="nav-icon"><span class="fi fi-doc"></span></span>
                 <span>ยื่นใบลา</span>
             </div>
-            <div class="nav-item" onclick="showSection('history')">
+            <div class="nav-item" data-section="history" onclick="showSection('history')">
                 <span class="nav-icon"><span class="fi fi-history"></span></span>
                 <span>ประวัติการลา</span>
             </div>
-            <div class="nav-item" onclick="showSection('official-trip')">
+            <div class="nav-item" data-section="official-trip" onclick="showSection('official-trip')">
                 <span class="nav-icon"><span class="fi fi-car"></span></span>
                 <span>แจ้งไปราชการ</span>
             </div>
@@ -1408,7 +1530,7 @@
                 <span class="nav-icon"><span class="fi fi-chart"></span></span>
                 <span>รายงานไปราชการ</span>
             </div>
-            <div class="nav-item" onclick="showSection('late-arrival')">
+            <div class="nav-item" data-section="late-arrival" onclick="showSection('late-arrival')">
                 <span class="nav-icon"><span class="fi fi-clock"></span></span>
                 <span>แจ้งเข้าสายฉุกเฉิน</span>
             </div>
@@ -1428,14 +1550,44 @@
     <!-- Mobile Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav" id="bottomNav">
+        <div class="bottom-nav-item active" data-section="dashboard" onclick="showSection('dashboard')">
+            <span class="fi fi-home"></span>
+            <span class="bottom-nav-label">หน้าแรก</span>
+        </div>
+        <div class="bottom-nav-item" data-section="leave" onclick="showSection('leave')">
+            <span class="fi fi-doc"></span>
+            <span class="bottom-nav-label">ยื่นใบลา</span>
+        </div>
+        <div class="bottom-nav-item" data-section="history" onclick="showSection('history')">
+            <span class="fi fi-history"></span>
+            <span class="bottom-nav-label">ประวัติ</span>
+        </div>
+        <div class="bottom-nav-item" data-section="official-trip" onclick="showSection('official-trip')">
+            <span class="fi fi-car"></span>
+            <span class="bottom-nav-label">ไปราชการ</span>
+        </div>
+        <div class="bottom-nav-item" onclick="toggleSidebar()">
+            <span class="fi fi-menu"></span>
+            <span class="bottom-nav-label">เมนู</span>
+        </div>
+    </nav>
 
     <!-- Main Content -->
     <div class="main-content">
         <div class="content-wrapper">
             <!-- Dashboard Section -->
             <div class="content-section active" id="dashboard-section">
+            <div class="welcome-card" id="welcomeCard">
+                <div class="welcome-card-text">
+                    <div class="welcome-greeting" id="welcomeGreeting">สวัสดีค่ะ/ครับ</div>
+                    <div class="welcome-name" id="welcomeName">คุณครู</div>
+                    <div class="welcome-date" id="welcomeDate"></div>
+                </div>
+                <div class="welcome-card-icon"><span class="fi fi-wave"></span></div>
+            </div>
+
             <div class="page-header">
                 <h1 class="page-title"><span class="fi fi-chart"></span> สรุปภาพรวม</h1>
                 <p class="page-subtitle">สถิติการลาและข้อมูลทั่วไป</p>
@@ -1768,30 +1920,36 @@
         document.getElementById('userName').textContent = currentUser.name;
         document.getElementById('userPosition').textContent = currentUser.position || 'ครู';
         document.getElementById('userAvatar').textContent = currentUser.name.charAt(0);
-        
-        // Update mobile user button
-        const mobileUserBtn = document.getElementById('mobileUserBtn');
-        if (mobileUserBtn) {
-            mobileUserBtn.textContent = currentUser.name.charAt(0);
-        }
+
+        // Update welcome card
+        (function renderWelcomeCard() {
+            const hour = new Date().getHours();
+            const greeting = hour < 11 ? 'สวัสดีตอนเช้า' : hour < 15 ? 'สวัสดีตอนบ่าย' : hour < 18 ? 'สวัสดีตอนเย็น' : 'สวัสดีตอนค่ำ';
+            document.getElementById('welcomeGreeting').textContent = greeting;
+            document.getElementById('welcomeName').textContent = currentUser.name;
+            document.getElementById('welcomeDate').textContent = new Date().toLocaleDateString('th-TH', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        })();
 
         // Navigation functions
         window.showSection = function(section) {
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            
-            document.getElementById(section + '-section').classList.add('active');
-            if (event && event.target) {
-                const navItem = event.target.closest('.nav-item');
-                if (navItem) navItem.classList.add('active');
-            }
-            
+            document.querySelectorAll('.nav-item, .bottom-nav-item').forEach(item => item.classList.remove('active'));
+
+            const targetSection = document.getElementById(section + '-section');
+            if (targetSection) targetSection.classList.add('active');
+            document.querySelectorAll(`[data-section="${section}"]`).forEach(item => item.classList.add('active'));
+
             // Close sidebar on mobile
             if (window.innerWidth <= 768) {
                 const sidebar = document.getElementById('sidebar');
                 const overlay = document.getElementById('sidebarOverlay');
                 const menuBtn = document.getElementById('mobileMenuBtn');
-                
+
                 sidebar.classList.remove('show');
                 overlay.classList.remove('show');
                 if (menuBtn) menuBtn.classList.remove('active');
